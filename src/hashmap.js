@@ -1,11 +1,11 @@
 /* @flow */
 
-import type { ListMap } from "./arraymap";
+import type { ListMap } from "./listmap";
 
 import { genericHash } from "./hash";
 
-import { get as arrayMapGet,
-         set as arrayMapSet } from "./arraymap";
+import { get as listMapGet,
+         set as listMapSet } from "./listmap";
 
 import { arrayRemovePair } from "./util";
 
@@ -25,7 +25,7 @@ type HashNode<K, V> = [
   0,
 ];
 
-type Node<K, V> = 0 | HashNode<K, V>;
+export type Node<K, V> = ListMap<K, V> | HashNode<K, V>;
 
 type SetOperation<T> = [T];
 type DelOperation    = 0;
@@ -40,7 +40,7 @@ const LEVEL = 5;
  */
 const MASK  = (1 << LEVEL) - 1;
 
-const EMPTY_NODE: Node<any, any> = 0;
+export const EMPTY: Node<any, any> = 0;
 
 function popcnt(i: Bitmap): number {
    i = i - ((i >>> 1) & 0x55555555);
@@ -49,12 +49,18 @@ function popcnt(i: Bitmap): number {
    return (((i + (i >>> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
 }
 
+  /*
 function mask(hash: number, shift: number): number {
   return (hash >>> shift) & MASK;
 }
 
 function bitpos(index: number): number {
   return 1 << index;
+}
+*/
+
+function bitpos(hash: number, shift: number): number {
+  return 1 << ((hash >>> shift) & MASK);
 }
 
 function index(bitmap: Bitmap, bit: number): number {
@@ -66,19 +72,17 @@ function nodeArity(datamap: Bitmap, nodemap: Bitmap): number {
 }
 
 function _set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn<K>, shift: number, node: Node<K, V>): Node<K, V> {
-  const bit = 1 << mask(hash, shift);
+  const bit = bitpos(hash, shift);
 
   if( ! node) {
     return op ? [bit, 0, [key, op[0]], 0] : 0;
   }
 
   if(node.length === 3) {
-    return op ? (arrayMapSet(key, op[0], (node: any)): any) : 0;
+    return op ? (listMapSet(key, op[0], (node: ListMap<K, V>)): any) : 0;
   }
 
-  const datamap = node[0];
-  const nodemap = node[1];
-  const array   = node[2];
+  const [datamap, nodemap, array] = (node: HashNode<K, V>);
   const keyIdx  = 2 * index(datamap, bit);
   const nodeIdx = array.length - 1 - index(nodemap, bit);
 
@@ -93,25 +97,17 @@ function _set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn<K>, s
   return node;
 }
 
-export function set<K, V>(key: K, value: V, hash: number, hashFn: HashFn<K>, node: Node<K, V>): Node<K, V> {
-  return _set(key, [value], hash, hashFn, 0, node);
-}
-
-export function del<K, V>(key: K, value: V, hash: number, hashFn: HashFn<K>, node: Node<K, V>): Node<K, V> {
-  return _set(key, 0, hash, hashFn, 0, node);
-}
-
-export function get<K, V>(key: K, hash: number, node: Node<K, V>): ?V {
+function _get<K, V>(key: K, hash: number, node: Node<K, V>): ?V {
   let shift = 0;
 
   while(node) {
     // ListMap is always 3 in length
     if(node.length !== 4) {
-      return arrayMapGet(key, (node: any));
+      return listMapGet(key, (node: ListMap<K, V>));
     }
 
     const [datamap, nodemap, array] = (node: HashNode<K, V>);
-    const bit     = 1 << mask(hash, shift);
+    const bit     = bitpos(hash, shift);
     const keyIdx  = 2 * index(datamap, bit);
     const nodeIdx = array.length - 1 - index(nodemap, bit);
 
@@ -128,22 +124,48 @@ export function get<K, V>(key: K, hash: number, node: Node<K, V>): ?V {
     }
   }
 
-  return null;
+  return undefined;
 }
+
+/**
+ * Creates a new hasher.
+ */
+export function withHasher<K>(hashFn: HashFn<K>) {
+  return {
+    get<V>(key: K, node: Node<K, V>): ?V {
+      return _get(key, hashFn(key), node);
+    },
+    set<V>(key: K, value: V, node: Node<K, V>): Node<K, V> {
+      return _set(key, [value], hashFn(key), hashFn, 0, node);
+    },
+    del<V>(key: K, node: Node<K, V>): Node<K, V> {
+      return _set(key, 0, hashFn(key), hashFn, 0, node);
+    }
+  };
+}
+
+const { get, set, del } = withHasher(genericHash);
+
+export { get, set, del };
 
 export class HashMap<K, V> {
   static DEFAULT_HASH: HashFn<any>;
   _root:   Node<K, V>;
   _hashFn: HashFn<K>;
   constructor() {
-    this._root   = (EMPTY_NODE: Node<K, V>);
+    this._root   = (EMPTY: Node<K, V>);
     this._hashFn = (HashMap.DEFAULT_HASH: HashFn<K>);
   }
   get(k: K): ?V {
-    return get(k, this._hashFn(k), this._root);
+    return _get(k, this._hashFn(k), this._root);
   }
   set(k: K, v: V): HashMap<K, V> {
-    let n = set(k, v, this._hashFn(k), this._hashFn, this._root);
+    let n = _set(k, [v], this._hashFn(k), this._hashFn, 0, this._root);
+
+    return n !== this._root ? Object.create(HashMap.prototype, ({ _root: n, _hashFn: this._hashFn }: any)) : this;
+  }
+  del(k: K): HashMap<K, V> {
+    let n =  _set(k, 0, this._hashFn(k), this._hashFn, 0, this._root);
 
     return n !== this._root ? Object.create(HashMap.prototype, ({ _root: n, _hashFn: this._hashFn }: any)) : this;
   }

@@ -22,18 +22,20 @@ export function get<K, V>(key: K, map: ListMap<K, V>): ?V {
     map = map[2];
   }
 
-  return null;
+  return undefined;
 }
 
 /**
  * Sets the key to the given value.
+ *
+ * Not tail recursive.
  */
 export function set<K, V>(key: K, value: V, map: ListMap<K, V> = 0): ListMap<K, V> {
-  if(get(key, map)) {
+  if(get(key, map) === value) {
     return map;
   }
 
-  return [key, value, map];
+  return [key, value, del(key, map)];
 }
 
 /**

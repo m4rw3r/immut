@@ -1,9 +1,9 @@
 /* @flow */
 
 
-export { set as arrayMapSet,
-         get as arrayMapGet,
-         del as arrayMapDel } from "./arraymap";
+export { set as listMapSet,
+         get as listMapGet,
+         del as listMapDel } from "./listmap";
 export { get as hashMapGet,
          set as hashMapSet,
          HashMap            } from "./hashmap";
