@@ -1,5 +1,7 @@
 /* @flow */
 
+export type HashFn<T> = (k: T) => number;
+
 /**
  * SDBM Hash.
  */
