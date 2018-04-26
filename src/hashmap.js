@@ -6,8 +6,7 @@ import { genericHash } from "./hash";
 
 import { get as listMapGet,
          set as listMapSet } from "./listmap";
-
-import { arrayRemovePair } from "./util";
+import { arrayInsert, arrayReplace, arrayRemovePair } from "./util";
 
 type Ref<T> = [T];
 
@@ -22,10 +21,9 @@ type HashNode<K, V> = [
   Bitmap,
   /** Nested */
   Array<any>,
-  0,
 ];
 
-export type Node<K, V> = ListMap<K, V> | HashNode<K, V>;
+export type Node<K, V> = HashNode<K, V> | 0;
 
 type SetOperation<T> = [T];
 type DelOperation    = 0;
@@ -35,13 +33,15 @@ type Operation<T>    = SetOperation<T> | DelOperation;
  * Number of bits per level.
  */
 const LEVEL = 5;
+
 /**
  * Mask to obtain valid array-indices.
  */
 const MASK  = (1 << LEVEL) - 1;
 
-export const EMPTY: Node<any, any> = 0;
-
+/**
+ * Should be converted into a proper population count instruction in JIT.
+ */
 function popcnt(i: Bitmap): number {
    i = i - ((i >>> 1) & 0x55555555);
    i = (i & 0x33333333) + ((i >>> 2) & 0x33333333);
@@ -49,69 +49,84 @@ function popcnt(i: Bitmap): number {
    return (((i + (i >>> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
 }
 
-  /*
-function mask(hash: number, shift: number): number {
-  return (hash >>> shift) & MASK;
-}
+/*
+const mask = (hash: number, shift: number): number =>
+  (hash >>> shift) & MASK;
 
-function bitpos(index: number): number {
-  return 1 << index;
-}
+const bitpos = (index: number): number =>
+  1 << index;
 */
 
-function bitpos(hash: number, shift: number): number {
-  return 1 << ((hash >>> shift) & MASK);
-}
+export const bitpos = (hash: number, shift: number): number =>
+  // Inlined mask
+  1 << ((hash >>> shift) & MASK);
 
-function index(bitmap: Bitmap, bit: number): number {
-  return popcnt(bitmap & (bit - 1));
-}
+export const index = (bitmap: Bitmap, bit: number): number =>
+  popcnt(bitmap & (bit - 1));
 
-function nodeArity(datamap: Bitmap, nodemap: Bitmap): number {
-  return popcnt(datamap) + popcnt(nodemap);
-}
+export const nodeArity = (datamap: Bitmap, nodemap: Bitmap): number =>
+  popcnt(datamap) + popcnt(nodemap);
+
+export const EMPTY: Node<any, any> = 0;
 
 function _set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn<K>, shift: number, node: Node<K, V>): Node<K, V> {
   const bit = bitpos(hash, shift);
 
   if( ! node) {
-    return op ? [bit, 0, [key, op[0]], 0] : 0;
+    return op ? [bit, 0, [key, op[0]]] : 0;
   }
 
-  if(node.length === 3) {
-    return op ? (listMapSet(key, op[0], (node: ListMap<K, V>)): any) : 0;
+  // Flow: Fails to determine union type based on tuple length
+  const [datamap, nodemap, array] = node;
+  const keyIdx                    = 2 * index(datamap, bit);
+  const nodeIdx                   = array.length - 1 - index(nodemap, bit);
+
+  if((nodemap & bit) !== 0) {
+    // Exists in subnode
+    throw new Error("Not implemented: Exists in subnode");
   }
 
-  const [datamap, nodemap, array] = (node: HashNode<K, V>);
-  const keyIdx  = 2 * index(datamap, bit);
-  const nodeIdx = array.length - 1 - index(nodemap, bit);
+  if((datamap & bit) !== 0) {
+    if(array[keyIdx] === key) {
+      // Duplicate
+      if( ! op) {
+        // delete
+        return nodeArity(datamap, nodemap) !== 1
+          ? [datamap ^ bit, nodemap, arrayRemovePair(array, keyIdx)]
+          : 0;
+      }
 
-  if((datamap & bit) > 0) {
-    if( ! op) {
-      return nodeArity(datamap, nodemap) === 1 ? 0 :
-        [datamap ^ bit, nodemap, arrayRemovePair(array, keyIdx), 0];
+      // replace if not equal
+      return array[keyIdx + 1] !== op[0]
+        ? [datamap, nodemap, arrayReplace(array, keyIdx, op[0])]
+        : node;
     }
 
+    // Duplicate hash
+    throw new Error("Not implemented: Duplicate hash");
   }
 
-  return node;
+  return ! op ? node : [datamap | bit, nodemap, arrayInsert(array, keyIdx, key, op[0])];
 }
 
 function _get<K, V>(key: K, hash: number, node: Node<K, V>): ?V {
   let shift = 0;
 
   while(node) {
+    /*
     // ListMap is always 3 in length
     if(node.length !== 4) {
-      return listMapGet(key, (node: ListMap<K, V>));
+      // Flow: Fails to determine union type based on tuple length
+      return listMapGet(key, ((node: any): ListMap<K, V>));
     }
+    */
 
-    const [datamap, nodemap, array] = (node: HashNode<K, V>);
-    const bit     = bitpos(hash, shift);
-    const keyIdx  = 2 * index(datamap, bit);
-    const nodeIdx = array.length - 1 - index(nodemap, bit);
+    const [datamap, nodemap, array] = node;
+    const bit                       = bitpos(hash, shift);
+    const keyIdx                    = 2 * index(datamap, bit);
+    const nodeIdx                   = array.length - 1 - index(nodemap, bit);
 
-    if((datamap & bit) > 0 && (array[keyIdx]: K) === key) {
+    if((datamap & bit) !== 0 && (array[keyIdx]: K) === key) {
       return (array[keyIdx + 1]: V);
     }
 
