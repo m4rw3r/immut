@@ -81,7 +81,7 @@ export function arrayRemoveAndAdd<T>(array: Array<T>, start: number, num: number
   }
 
   for(i = 0; i < ilen; i++) {
-    arr[i] = items[i];
+    arr[insert + i] = items[i];
   }
 
   return arr;

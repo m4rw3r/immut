@@ -2,10 +2,10 @@
 
 import type { HashFn } from "../hash";
 
-import { arrayInsert,
-         arrayReplace,
+import { /*arrayInsert,*/
+  /*arrayReplace, */
          arrayRemoveAndAdd,
-         arrayRemovePair } from "../util";
+/* arrayRemovePair */ } from "../util";
 
 type Bitmap = number;
 
@@ -101,32 +101,32 @@ export function set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn
       if( ! op) {
         // delete
         return nodeArity(datamap, nodemap) !== 1
-          ? [datamap ^ bit, nodemap, arrayRemovePair(array, keyIdx)]
+          ? [datamap ^ bit, nodemap, /* arrayRemovePair(array, keyIdx) */arrayRemoveAndAdd(array, keyIdx, 2, 0, [])]
           : (EMPTY: Node<K, V>);
       }
 
       // replace if not equal
       return array[keyIdx + 1] !== op[0]
-        ? [datamap, nodemap, arrayReplace(array, keyIdx + 1, op[0])]
+        ? [datamap, nodemap, /* arrayReplace(array, keyIdx + 1, op[0]) */arrayRemoveAndAdd(array, keyIdx + 1, 1, keyIdx + 1, (op: any))]
         : node;
     }
 
     if(op) {
       // We have a collision in the sub-hash, split out to a new node
-
-      const node = mergeEntries(
-        shift + LEVEL,
-        key, hash, op[0],
-        (array[keyIdx]: K), hashFn((array[keyIdx]: K)), (array[keyIdx + 1]: V));
-
-      return [datamap ^ bit, nodemap | bit, arrayRemoveAndAdd(array, keyIdx, 2, nodeIdx - 1, [node])];
+      return [
+        datamap ^ bit,
+        nodemap | bit,
+        arrayRemoveAndAdd(array, keyIdx, 2, nodeIdx - 1, [
+          mergeEntries(
+            shift + LEVEL,
+            key, hash, op[0],
+            (array[keyIdx]: K), hashFn((array[keyIdx]: K)), (array[keyIdx + 1]: V))
+        ])
+      ];
     }
-
-    // Duplicate hash
-    throw new Error("Not implemented: Duplicate hash");
   }
 
-  return ! op ? node : [datamap | bit, nodemap, arrayInsert(array, keyIdx, key, op[0])];
+  return ! op ? node : [datamap | bit, nodemap, /*arrayInsert(array, keyIdx, key, op[0])*/arrayRemoveAndAdd(array, 0, 0, keyIdx, [key, op[0]])];
 }
 
 export function get<K, V>(key: K, hash: number, node: Node<K, V>): ?V {
