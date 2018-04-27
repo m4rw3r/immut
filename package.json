@@ -9,7 +9,9 @@
     "build-prod": "cross-env NODE_ENV=production rollup -c",
     "prepublish": "npm run build-prod",
     "watch": "nodemon -w src -w tests -q -x \"npm run --silent test || true\"",
-    "test": "flow check . && ava"
+    "test": "flow check . && ava",
+    "coverage": "nyc ava",
+    "coverage-html": "nyc --reporter=html ava"
   },
   "author": "Martin Wernstål <m4rw3r@gmail.com>",
   "license": "MIT",
@@ -25,6 +27,7 @@
     "cross-env": "^5.1.4",
     "flow-bin": "^0.71.0",
     "nodemon": "^1.17.3",
+    "nyc": "^11.7.1",
     "rollup": "^0.58.2",
     "rollup-plugin-babel": "^4.0.0-beta.2",
     "rollup-plugin-gzip": "^1.3.0",
