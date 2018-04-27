@@ -32,7 +32,8 @@ const LEVEL = 5;
 const MASK  = (1 << LEVEL) - 1;
 
 /**
- * Should be converted into a proper population count instruction in JIT.
+ * Variable-precision SWAR algorithm, should be converted into a proper
+ * population count instruction in JIT.
  */
 function popcnt(i: Bitmap): number {
    i = i - ((i >>> 1) & 0x55555555);
@@ -41,31 +42,35 @@ function popcnt(i: Bitmap): number {
    return (((i + (i >>> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
 }
 
-/*
-const mask = (hash: number, shift: number): number =>
-  (hash >>> shift) & MASK;
-
-const bitpos = (index: number): number =>
-  1 << index;
-*/
-
+/**
+ * Bitmap with single bit lit for the hash position at the given shift.
+ */
 const bitpos = (hash: number, shift: number): number =>
   // Inlined mask
   1 << ((hash >>> shift) & MASK);
 
+/**
+ * The array index for the given bit in the bitmap.
+ */
 const index = (bitmap: Bitmap, bit: number): number =>
   popcnt(bitmap & (bit - 1));
 
+/**
+ * Number of entries and nodes in the given node.
+ */
 const nodeArity = (datamap: Bitmap, nodemap: Bitmap): number =>
   popcnt(datamap) + popcnt(nodemap);
 
+/**
+ * The empty node.
+ */
 export const EMPTY: Node<any, any> = 0;
 
 export function set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn<K>, shift: number, node: Node<K, V>): Node<K, V> {
   const bit = bitpos(hash, shift);
 
   if( ! node) {
-    return op ? [bit, 0, [key, op[0]]] : 0;
+    return op ? [bit, 0, [key, op[0]]] : (EMPTY: Node<K, V>);
   }
 
   // Flow: Fails to determine union type based on tuple length
@@ -85,7 +90,7 @@ export function set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn
         // delete
         return nodeArity(datamap, nodemap) !== 1
           ? [datamap ^ bit, nodemap, arrayRemovePair(array, keyIdx)]
-          : 0;
+          : (EMPTY: Node<K, V>);
       }
 
       // replace if not equal

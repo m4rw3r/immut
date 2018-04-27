@@ -1,14 +1,15 @@
 require("@babel/register")({
-  ignore: ["node_modules/*", "test/*"],
-  babelrc: false,
-  presets: [
+  ignore:     ["node_modules/*", "test/*"],
+  babelrc:    false,
+  sourceMaps: "inline",
+  presets:    [
     ["@babel/preset-env", {
       "esmodules": true,
       "loose":     true,
       "targets":   {
         "node":     "current",
       },
-      "exclude": [ "transform-typeof-symbol" ]
+      "exclude":   [ "transform-typeof-symbol" ]
     }]
   ],
   plugins: [
