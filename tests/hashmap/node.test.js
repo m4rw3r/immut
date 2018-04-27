@@ -35,7 +35,17 @@ test("set same", t => {
 
 test("set deep shift", t => {
   t.deepEqual(set("a", ["b"], 32, noCall, 5, EMPTY), [1 << 1, 0, ["a", "b"]]);
-  //t.deepEqual(set("a", ["b"], 0, noCall, 0, set("b", ["c"], 32), [1 << 0, 0, ["a", "b"]]);
+});
+
+test("set deep duplicate bits", t => {
+  const o1 = {};
+  const o2 = {};
+
+  let a = set("a", [o1], 0, noCall, 0, 0);
+
+  t.deepEqual(a, [1 << 0, 0, ["a", o1]]);
+  t.deepEqual(set("b", [o2], 32, noCall, 0, a),
+    [0, 1 | 2, [[1 << 1, 0, ["b", o2]], [1 << 1, 0, ["a", o1]]]]);
 });
 
 test("delete empty", t => {
@@ -61,8 +71,11 @@ test("get nested", t => {
   t.is(get("b", 32, [0, 1 <<  0, [[1 << 1, 0, ["a", o]]]]), undefined);
   t.is(get("a", 33, [0, 1 <<  1, [[1 << 1, 0, ["a", o]]]]), o);
   t.is(get("b", 33, [0, 1 <<  1, [[1 << 1, 0, ["a", o]]]]), undefined);
-  // Two different keys in same tree
+  // Two different nodes
   t.is(get("a", 32, [0, 1 | 2, [[1 << 1, 0, ["b", o2]], [1 << 1, 0, ["a", o]]]]), o);
   t.is(get("b", 33, [0, 1 | 2, [[1 << 1, 0, ["b", o2]], [1 << 1, 0, ["a", o]]]]), o2);
+  // Two different keys in same tree
+  t.is(get("a",  0, [0, 1, [[1 | 2, 0, ["a", o, "b", o2]]]]), o);
+  t.is(get("b", 32, [0, 1, [[1 | 2, 0, ["a", o, "b", o2]]]]), o2);
 });
 
