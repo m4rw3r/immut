@@ -2,7 +2,10 @@
 
 import type { HashFn } from "../hash";
 
-import { arrayInsert, arrayReplace, arrayRemovePair } from "../util";
+import { arrayInsert,
+         arrayReplace,
+         arrayRemoveAndAdd,
+         arrayRemovePair } from "../util";
 
 type Bitmap = number;
 
@@ -24,16 +27,15 @@ export type Operation<T> = SetOperation<T> | DelOperation;
 /**
  * Number of bits per level.
  */
-const LEVEL = 5;
+export const LEVEL = 5;
 
 /**
  * Mask to obtain valid array-indices.
  */
-const MASK  = (1 << LEVEL) - 1;
+const MASK = (1 << LEVEL) - 1;
 
 /**
- * Variable-precision SWAR algorithm, should be converted into a proper
- * population count instruction in JIT.
+ * Variable-precision SWAR algorithm, should be possible to run as SIMD.
  */
 function popcnt(i: Bitmap): number {
    i = i - ((i >>> 1) & 0x55555555);
@@ -46,7 +48,7 @@ function popcnt(i: Bitmap): number {
  * Bitmap with single bit lit for the hash position at the given shift.
  */
 const bitpos = (hash: number, shift: number): number =>
-  // Inlined mask
+  // Inlined mask (1 << mask)
   1 << ((hash >>> shift) & MASK);
 
 /**
@@ -65,6 +67,16 @@ const nodeArity = (datamap: Bitmap, nodemap: Bitmap): number =>
  * The empty node.
  */
 export const EMPTY: Node<any, any> = 0;
+
+function mergeEntries<K, V>(shift: number, k1: K, h1: number, v1: V, k2: K, h2: number, v2: V): Node<K, V> {
+  // TODO: Manage exhaustion of hash bits (>>> 32)
+  const masked1 = (h1 >>> shift) & MASK;
+  const masked2 = (h2 >>> shift) & MASK;
+
+  return masked1 !== masked2
+    ? [(1 << masked1) | (1 << masked2), 0, masked1 < masked2 ? [k1, v1, k2, v2] : [k2, v2, k1, v1]]
+    : [0, (1 << masked1), [mergeEntries(shift + LEVEL, k1, h1, v1, k2, h2, v2)]];
+}
 
 export function set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn<K>, shift: number, node: Node<K, V>): Node<K, V> {
   const bit = bitpos(hash, shift);
@@ -97,6 +109,17 @@ export function set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn
       return array[keyIdx + 1] !== op[0]
         ? [datamap, nodemap, arrayReplace(array, keyIdx + 1, op[0])]
         : node;
+    }
+
+    if(op) {
+      // We have a collision in the sub-hash, split out to a new node
+
+      const node = mergeEntries(
+        shift + LEVEL,
+        key, hash, op[0],
+        (array[keyIdx]: K), hashFn((array[keyIdx]: K)), (array[keyIdx + 1]: V));
+
+      return [datamap ^ bit, nodemap | bit, arrayRemoveAndAdd(array, keyIdx, 2, nodeIdx - 1, [node])];
     }
 
     // Duplicate hash

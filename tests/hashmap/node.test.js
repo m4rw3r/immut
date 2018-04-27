@@ -1,6 +1,7 @@
 /* @flow */
 import test      from "ava";
 import { EMPTY,
+         LEVEL,
          get,
          set }   from "../../src/hashmap/node";
 
@@ -13,20 +14,20 @@ test("empty", t => {
 });
 
 test("set single", t => {
-  t.deepEqual(set("a", ["b"],  0, noCall, 0, 0), [1 <<  0, 0, ["a", "b"]]);
-  t.deepEqual(set("a", ["b"],  1, noCall, 0, 0), [1 <<  1, 0, ["a", "b"]]);
-  t.deepEqual(set("a", ["b"],  2, noCall, 0, 0), [1 <<  2, 0, ["a", "b"]]);
-  t.deepEqual(set("a", ["b"],  3, noCall, 0, 0), [1 <<  3, 0, ["a", "b"]]);
-  t.deepEqual(set("a", ["b"], 15, noCall, 0, 0), [1 << 15, 0, ["a", "b"]]);
-  t.deepEqual(set("a", ["b"], 16, noCall, 0, 0), [1 << 16, 0, ["a", "b"]]);
-  t.deepEqual(set("a", ["b"], 31, noCall, 0, 0), [1 << 31, 0, ["a", "b"]]);
+  t.deepEqual(set("a", ["b"],  0, noCall, 0, EMPTY), [1 <<  0, 0, ["a", "b"]]);
+  t.deepEqual(set("a", ["b"],  1, noCall, 0, EMPTY), [1 <<  1, 0, ["a", "b"]]);
+  t.deepEqual(set("a", ["b"],  2, noCall, 0, EMPTY), [1 <<  2, 0, ["a", "b"]]);
+  t.deepEqual(set("a", ["b"],  3, noCall, 0, EMPTY), [1 <<  3, 0, ["a", "b"]]);
+  t.deepEqual(set("a", ["b"], 15, noCall, 0, EMPTY), [1 << 15, 0, ["a", "b"]]);
+  t.deepEqual(set("a", ["b"], 16, noCall, 0, EMPTY), [1 << 16, 0, ["a", "b"]]);
+  t.deepEqual(set("a", ["b"], 31, noCall, 0, EMPTY), [1 << 31, 0, ["a", "b"]]);
   // Wraparound
-  t.deepEqual(set("a", ["b"], 32, noCall, 0, 0), [1 <<  0, 0, ["a", "b"]]);
-  t.deepEqual(set("a", ["b"], 33, noCall, 0, 0), [1 <<  1, 0, ["a", "b"]]);
+  t.deepEqual(set("a", ["b"], 32, noCall, 0, EMPTY), [1 <<  0, 0, ["a", "b"]]);
+  t.deepEqual(set("a", ["b"], 33, noCall, 0, EMPTY), [1 <<  1, 0, ["a", "b"]]);
 });
 
 test("set same", t => {
-  let a = set("a", ["b"], 0, noCall, 0, 0);
+  let a = set("a", ["b"], 0, noCall, 0, EMPTY);
 
   t.is(set("a", ["b"], 0, noCall, 0, a), a);
   t.not(set("a", ["c"], 0, noCall, 0, a), a);
@@ -34,22 +35,28 @@ test("set same", t => {
 });
 
 test("set deep shift", t => {
-  t.deepEqual(set("a", ["b"], 32, noCall, 5, EMPTY), [1 << 1, 0, ["a", "b"]]);
+  t.deepEqual(set("a", ["b"], 32, noCall, LEVEL, EMPTY), [1 << 1, 0, ["a", "b"]]);
 });
 
 test("set deep duplicate bits", t => {
   const o1 = {};
   const o2 = {};
 
-  let a = set("a", [o1], 0, noCall, 0, 0);
+  const rehash = (hash: string): number => {
+    t.is(hash, "a");
+
+    return 0;
+  };
+
+  let a = set("a", [o1], 0, noCall, 0, EMPTY);
 
   t.deepEqual(a, [1 << 0, 0, ["a", o1]]);
-  t.deepEqual(set("b", [o2], 32, noCall, 0, a),
-    [0, 1 | 2, [[1 << 1, 0, ["b", o2]], [1 << 1, 0, ["a", o1]]]]);
+  t.deepEqual(set("b", [o2], 32, rehash, 0, a),
+    [0, 1, [[1 | 2, 0, ["a", o1, "b", o2]]]]);
 });
 
 test("delete empty", t => {
-  t.is(set("a", 0, 0, noCall, 0, 0), 0);
+  t.is(set("a", 0, 0, noCall, 0, EMPTY), EMPTY);
 });
 
 test("delete", t => {

@@ -52,3 +52,37 @@ export function arrayRemovePair<T>(array: Array<T>, idx: number): Array<T> {
 
   return arr;
 }
+
+// TODO: Check if we can replace arrayRemovePair with this, and arrayInsertPair, maybe all
+export function arrayRemoveAndAdd<T>(array: Array<T>, start: number, num: number, insert: number, items: Array<T>): Array<T> {
+  const len  = array.length;
+  const ilen = items.length;
+  const arr  = new Array(len - num + ilen);
+  let i = 0;
+  let j = 0;
+
+  while(true) {
+    // TODO: What are the performance implications of these two?
+    while(i >= insert && i < insert + ilen) {
+      // Leave gaps
+      i++;
+    }
+
+    while(j >= start && j < start + num) {
+      // Skip
+      j++;
+    }
+
+    if(j >= len) {
+      break;
+    }
+
+    arr[i++] = array[j++];
+  }
+
+  for(i = 0; i < ilen; i++) {
+    arr[i] = items[i];
+  }
+
+  return arr;
+}
