@@ -69,7 +69,11 @@ const nodeArity = (datamap: Bitmap, nodemap: Bitmap): number =>
 export const EMPTY: Node<any, any> = 0;
 
 function mergeEntries<K, V>(shift: number, k1: K, h1: number, v1: V, k2: K, h2: number, v2: V): Node<K, V> {
-  // TODO: Manage exhaustion of hash bits (>>> 32)
+  if(shift >= 32) {
+    // TODO: Manage exhaustion of hash bits (>>> 32)
+    throw new Error("Exhausted hash-bits, hashes still identical");
+  }
+
   const masked1 = (h1 >>> shift) & MASK;
   const masked2 = (h2 >>> shift) & MASK;
 
@@ -85,7 +89,6 @@ export function set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn
     return op ? [bit, 0, [key, op[0]]] : (EMPTY: Node<K, V>);
   }
 
-  // Flow: Fails to determine union type based on tuple length
   const [datamap, nodemap, array] = node;
   const keyIdx                    = 2 * index(datamap, bit);
   const nodeIdx                   = array.length - 1 - index(nodemap, bit);
@@ -101,13 +104,23 @@ export function set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn
       if( ! op) {
         // delete
         return nodeArity(datamap, nodemap) !== 1
-          ? [datamap ^ bit, nodemap, /* arrayRemovePair(array, keyIdx) */arrayRemoveAndAdd(array, keyIdx, 2, 0, [])]
+          ? [
+              datamap ^ bit,
+              nodemap,
+              /* arrayRemovePair(array, keyIdx) */
+              arrayRemoveAndAdd(array, keyIdx, 2, 0, [])
+            ]
           : (EMPTY: Node<K, V>);
       }
 
       // replace if not equal
       return array[keyIdx + 1] !== op[0]
-        ? [datamap, nodemap, /* arrayReplace(array, keyIdx + 1, op[0]) */arrayRemoveAndAdd(array, keyIdx + 1, 1, keyIdx + 1, (op: any))]
+        ? [
+          datamap,
+          nodemap,
+          /* arrayReplace(array, keyIdx + 1, op[0]) */
+          arrayRemoveAndAdd(array, keyIdx + 1, 1, keyIdx + 1, (op: any))
+        ]
         : node;
     }
 
@@ -126,7 +139,14 @@ export function set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn
     }
   }
 
-  return ! op ? node : [datamap | bit, nodemap, /*arrayInsert(array, keyIdx, key, op[0])*/arrayRemoveAndAdd(array, 0, 0, keyIdx, [key, op[0]])];
+  return ! op
+    ? node
+    : [
+      datamap | bit,
+      nodemap,
+      /*arrayInsert(array, keyIdx, key, op[0])*/
+      arrayRemoveAndAdd(array, 0, 0, keyIdx, [key, op[0]])
+    ];
 }
 
 export function get<K, V>(key: K, hash: number, node: Node<K, V>): ?V {

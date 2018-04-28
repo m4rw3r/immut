@@ -55,6 +55,24 @@ test("set deep duplicate bits", t => {
     [0, 1, [[1 | 2, 0, ["a", o1, "b", o2]]]]);
 });
 
+test("set deep same bits", t => {
+  const o1 = {};
+  const o2 = {};
+
+  const rehash = (hash: string): number => {
+    t.is(hash, "a");
+
+    return 0;
+  };
+
+  let a = set("a", [o1], 0, noCall, 0, EMPTY);
+
+  t.deepEqual(a, [1 << 0, 0, ["a", o1]]);
+  t.deepEqual(set("b", [o2], 0, rehash, 0, a),
+    // TODO: Update this representation
+    [0, 1, [[1 | 2, 0, ["a", o1, "b", o2]]]]);
+});
+
 test("delete empty", t => {
   t.is(set("a", 0, 0, noCall, 0, EMPTY), EMPTY);
 });
