@@ -1,6 +1,11 @@
 /* @flow */
 
-import type { HashFn } from "../hash";
+import type { HashFn }    from "../hash";
+import type { ArrayNode } from "./arraynode";
+
+import { get as arrayNodeGet,
+         set as arrayNodeSet,
+         del as arrayNodeDel } from "./arraynode";
 
 import { /*arrayInsert,*/
   /*arrayReplace, */
@@ -17,8 +22,6 @@ type HashNode<K, V> = [
   /** Nested */
   Array<any>,
 ];
-
-type ArrayNode<K, V> = Array<K | V>;
 
 type Some<T> = [T];
 type None    = 0;
@@ -78,7 +81,8 @@ export const EMPTY: Node<any, any> = 0;
 function mergeEntries<K, V>(shift: number, k1: K, h1: number, v1: V, k2: K, h2: number, v2: V): Node<K, V> {
   if(shift >= 32) {
     // Preserve insertion order
-    return [k2, v2, k1, v1];
+    // TODO: Cast to ArrayNode<K, V>
+    return ([k2, v2, k1, v1]: any);
   }
 
   const masked1 = (h1 >>> shift) & MASK;
@@ -93,11 +97,10 @@ export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>
   if(shift >= 32) {
     /*:: node = ((node: any): ArrayNode<K, V>); */
 
-    // FIXME: Proper adding and removal
+    // FIXME: Proper adding and removal, need to collapse the tree to the minimal tree on delete
     return op
-      ? /*arrayInsert(node, key, key, op[0])*/
-        arrayRemoveAndAdd(node, 0, 0, node.length, [key, op[0]])
-    : removeFromCollision(key, node);
+      ? arrayNodeSet(key, op[0], node)
+      : arrayNodeDel(key, node);
   }
 
   /*:: node = ((node: any): HashNode<K, V>); */
@@ -171,14 +174,6 @@ export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>
     ]: HashNode<K, V>);
 }
 
-function findInArray<K, V>(key: K, node: ArrayNode<K, V>): ?V {
-  for(let i = 0; i < node.length; i += 2) {
-    if(node[i] === key) {
-      return ((node[i + 1]: any): V);
-    }
-  }
-}
-
 export function get<K, V>(key: K, hash: number, node: Node<K, V>): ?V {
   let shift = 0;
 
@@ -186,7 +181,7 @@ export function get<K, V>(key: K, hash: number, node: Node<K, V>): ?V {
     if(shift >= 32) {
       /*:: node = ((node: any): ArrayNode<K, V>);*/
 
-      return findInArray(key, node);
+      return arrayNodeGet(key, node);
     }
 
     /*:: node = ((node: any): HashNode<K, V>);*/
