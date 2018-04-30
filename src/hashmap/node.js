@@ -45,6 +45,8 @@ export const LEVEL = 5;
 const MASK = (1 << LEVEL) - 1;
 
 /**
+ * Counts the number of set bits in the given 32-bit bitmap.
+ *
  * Variable-precision SWAR algorithm, should be possible to run as SIMD.
  */
 function popcnt(i: Bitmap): number {
@@ -55,7 +57,8 @@ function popcnt(i: Bitmap): number {
 }
 
 /**
- * Bitmap with single bit lit for the hash position at the given shift.
+ * Returns a bitmap with a single bit set for the hash position for the given
+ * hash at the given shift.
  */
 const bitpos = (hash: number, shift: number): number =>
   // Inlined mask (1 << mask)
