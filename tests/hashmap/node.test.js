@@ -1,4 +1,3 @@
-/* @flow */
 import test      from "ava";
 import { EMPTY,
          LEVEL,
@@ -69,8 +68,9 @@ test("set deep same bits", t => {
 
   t.deepEqual(a, [1 << 0, 0, ["a", o1]]);
   t.deepEqual(set("b", [o2], 0, rehash, 0, a),
-    // TODO: Update this representation
-    [0, 1, [[1 | 2, 0, ["a", o1, "b", o2]]]]);
+    [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [["a", o1, "b", o2]]]]]]]]]]]]]]]);
 });
 
 test("delete empty", t => {
@@ -104,3 +104,12 @@ test("get nested", t => {
   t.is(get("b", 32, [0, 1, [[1 | 2, 0, ["a", o, "b", o2]]]]), o2);
 });
 
+test("get collision", t => {
+  const o1 = {};
+  const o2 = {};
+  const a  = [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [["a", o1, "b", o2]]]]]]]]]]]]]]];
+  t.is(get("a", 0, a), o1);
+  t.is(get("b", 0, a), o2);
+});

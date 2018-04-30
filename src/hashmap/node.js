@@ -18,11 +18,18 @@ type HashNode<K, V> = [
   Array<any>,
 ];
 
-type SetOperation<T> = [T];
-type DelOperation    = 0;
+type ArrayNode<K, V> = Array<K | V>;
 
-export type Node<K, V>   = HashNode<K, V> | 0;
-export type Operation<T> = SetOperation<T> | DelOperation;
+type Some<T> = [T];
+type None    = 0;
+
+export type Node<K, V> =
+    HashNode<K, V>
+  | ArrayNode<K, V>
+  | 0;
+export type Option<T>  =
+    Some<T>
+  | None;
 
 /**
  * Number of bits per level.
@@ -70,23 +77,37 @@ export const EMPTY: Node<any, any> = 0;
 
 function mergeEntries<K, V>(shift: number, k1: K, h1: number, v1: V, k2: K, h2: number, v2: V): Node<K, V> {
   if(shift >= 32) {
-    // TODO: Manage exhaustion of hash bits (>>> 32)
-    throw new Error("Exhausted hash-bits, hashes still identical");
+    // Preserve insertion order
+    return [k2, v2, k1, v1];
   }
 
   const masked1 = (h1 >>> shift) & MASK;
   const masked2 = (h2 >>> shift) & MASK;
 
-  return masked1 !== masked2
+  return ((masked1 !== masked2
     ? [(1 << masked1) | (1 << masked2), 0, masked1 < masked2 ? [k1, v1, k2, v2] : [k2, v2, k1, v1]]
-    : [0, (1 << masked1), [mergeEntries(shift + LEVEL, k1, h1, v1, k2, h2, v2)]];
+    : [0, (1 << masked1), [mergeEntries(shift + LEVEL, k1, h1, v1, k2, h2, v2)]]): HashNode<K, V>);
 }
 
-export function set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn<K>, shift: number, node: Node<K, V>): Node<K, V> {
+export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>, shift: number, node: Node<K, V>): Node<K, V> {
+  if(shift >= 32) {
+    /*:: node = ((node: any): ArrayNode<K, V>); */
+
+    // FIXME: Proper adding and removal
+    return op
+      ? /*arrayInsert(node, key, key, op[0])*/
+        arrayRemoveAndAdd(node, 0, 0, node.length, [key, op[0]])
+    : removeFromCollision(key, node);
+  }
+
+  /*:: node = ((node: any): HashNode<K, V>); */
+
   const bit = bitpos(hash, shift);
 
   if( ! node) {
-    return op ? [bit, 0, [key, op[0]]] : (EMPTY: Node<K, V>);
+    return op
+      ? ([bit, 0, [key, op[0]]]: HashNode<K, V>)
+      : (EMPTY: Node<K, V>);
   }
 
   const [datamap, nodemap, array] = node;
@@ -103,30 +124,31 @@ export function set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn
       // Duplicate
       if( ! op) {
         // delete
+        // TODO: Compact the tree
         return nodeArity(datamap, nodemap) !== 1
-          ? [
+          ? ([
               datamap ^ bit,
               nodemap,
               /* arrayRemovePair(array, keyIdx) */
               arrayRemoveAndAdd(array, keyIdx, 2, 0, [])
-            ]
+            ]: HashNode<K, V>)
           : (EMPTY: Node<K, V>);
       }
 
       // replace if not equal
       return array[keyIdx + 1] !== op[0]
-        ? [
+        ? ([
           datamap,
           nodemap,
           /* arrayReplace(array, keyIdx + 1, op[0]) */
           arrayRemoveAndAdd(array, keyIdx + 1, 1, keyIdx + 1, (op: any))
-        ]
+        ]: HashNode<K, V>)
         : node;
     }
 
     if(op) {
       // We have a collision in the sub-hash, split out to a new node
-      return [
+      return ([
         datamap ^ bit,
         nodemap | bit,
         arrayRemoveAndAdd(array, keyIdx, 2, nodeIdx - 1, [
@@ -135,31 +157,39 @@ export function set<K, V>(key: K, op: Operation<V>, hash: number, hashFn: HashFn
             key, hash, op[0],
             (array[keyIdx]: K), hashFn((array[keyIdx]: K)), (array[keyIdx + 1]: V))
         ])
-      ];
+      ]: HashNode<K, V>);
     }
   }
 
   return ! op
     ? node
-    : [
+    : ([
       datamap | bit,
       nodemap,
       /*arrayInsert(array, keyIdx, key, op[0])*/
       arrayRemoveAndAdd(array, 0, 0, keyIdx, [key, op[0]])
-    ];
+    ]: HashNode<K, V>);
+}
+
+function findInArray<K, V>(key: K, node: ArrayNode<K, V>): ?V {
+  for(let i = 0; i < node.length; i += 2) {
+    if(node[i] === key) {
+      return ((node[i + 1]: any): V);
+    }
+  }
 }
 
 export function get<K, V>(key: K, hash: number, node: Node<K, V>): ?V {
   let shift = 0;
 
   while(node) {
-    /*
-    // ListMap is always 3 in length
-    if(node.length !== 4) {
-      // Flow: Fails to determine union type based on tuple length
-      return listMapGet(key, ((node: any): ListMap<K, V>));
+    if(shift >= 32) {
+      /*:: node = ((node: any): ArrayNode<K, V>);*/
+
+      return findInArray(key, node);
     }
-    */
+
+    /*:: node = ((node: any): HashNode<K, V>);*/
 
     const [datamap, nodemap, array] = node;
     const bit                       = bitpos(hash, shift);

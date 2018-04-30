@@ -9,6 +9,7 @@
     "build-prod": "cross-env NODE_ENV=production rollup -c",
     "prepublish": "npm run build-prod",
     "watch": "nodemon -w src -w tests -q -x \"npm run --silent test || true\"",
+    "flow": "flow check .",
     "test": "flow check . && ava",
     "coverage": "nyc ava",
     "coverage-html": "nyc --reporter=html ava"
