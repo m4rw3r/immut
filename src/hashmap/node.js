@@ -101,8 +101,14 @@ function mergeEntries<K, V>(shift: number, k1: K, h1: number, v1: V, k2: K, h2: 
   const masked2 = (h2 >>> shift) & MASK;
 
   return masked1 !== masked2
-    ? [(1 << masked1) | (1 << masked2), 0, masked1 < masked2 ? [k1, v1, k2, v2] : [k2, v2, k1, v1]]
-    : [0, (1 << masked1), [mergeEntries(shift + LEVEL, k1, h1, v1, k2, h2, v2)]];
+    ? [(1 << masked1) | (1 << masked2),
+       0,
+       masked1 < masked2
+         ? [k1, v1, k2, v2]
+         : [k2, v2, k1, v1]]
+    : [0,
+       (1 << masked1),
+       [mergeEntries(shift + LEVEL, k1, h1, v1, k2, h2, v2)]];
 }
 
 export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>, shift: number, node: Node<K, V>): Node<K, V> {
