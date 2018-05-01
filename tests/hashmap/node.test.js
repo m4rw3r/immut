@@ -78,7 +78,7 @@ test("set deep same bits", t => {
     [0, 1, [[0, 1, [[0, 1, [
     [0, 1, [["a", o1, "b", o2]]]]]]]]]]]]]]]);
 
-  a = set("c", [o3], 0, rehash, 0, a);
+  a = set("c", [o3], 0, noCall, 0, a);
 
   t.deepEqual(a,
     [0, 1, [[0, 1, [[0, 1, [
@@ -86,7 +86,7 @@ test("set deep same bits", t => {
     [0, 1, [["a", o1, "b", o2, "c", o3]]]]]]]]]]]]]]]);
 
   // Immutable, same object should come the same one
-  t.is(set("c", [o3], 0, rehash, 0, a), a);
+  t.is(set("c", [o3], 0, noCall, 0, a), a);
 });
 
 test("set subnode", t => {
