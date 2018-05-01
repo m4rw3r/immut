@@ -42,8 +42,9 @@ export function set<K, V>(key: K, value: V, node: ArrayNode<K, V>): ArrayNode<K,
     }
   }
 
-  // TODO: Check if the value is identical
-  return ((arrayRemoveAndAdd((node: any), i, 2, 0, [key, value]): any): ArrayNode<K, V>);
+  return node[i + 1] !== value
+    ? ((arrayRemoveAndAdd((node: any), i, 2, i, [key, value]): any): ArrayNode<K, V>)
+    : node;
 }
 
 export function del<K, V>(key: K, node: ArrayNode<K, V>): ArrayNode<K, V> {

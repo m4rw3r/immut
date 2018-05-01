@@ -57,8 +57,9 @@ test("set deep duplicate bits", t => {
 });
 
 test("set deep same bits", t => {
-  const o1 = {};
-  const o2 = {};
+  const o1 = { name: "o1" };
+  const o2 = { name: "o2" };
+  const o3 = { name: "o3" };
 
   const rehash = (hash: string): number => {
     t.is(hash, "a");
@@ -69,18 +70,33 @@ test("set deep same bits", t => {
   let a = set("a", [o1], 0, noCall, 0, EMPTY);
 
   t.deepEqual(a, [1 << 0, 0, ["a", o1]]);
-  t.deepEqual(set("b", [o2], 0, rehash, 0, a),
+
+  a = set("b", [o2], 0, rehash, 0, a);
+
+  t.deepEqual(a,
     [0, 1, [[0, 1, [[0, 1, [
     [0, 1, [[0, 1, [[0, 1, [
     [0, 1, [["a", o1, "b", o2]]]]]]]]]]]]]]]);
+
+  a = set("c", [o3], 0, rehash, 0, a);
+
+  t.deepEqual(a,
+    [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [["a", o1, "b", o2, "c", o3]]]]]]]]]]]]]]]);
+
+  // Immutable, same object should come the same one
+  t.is(set("c", [o3], 0, rehash, 0, a), a);
 });
 
 test("set subnode", t => {
-  const o1 = { o1: true };
-  const o2 = { o2: true };
+  const o1 = { name: "o1" };
+  const o2 = { name: "o2" };
 
   t.deepEqual(set("a", [o1], 0, noCall, 0, [0, 1, [[2, 0, ["b", o2]]]]),
     [0, 1, [[3, 0, ["a", o1, "b", o2]]]]);
+  t.deepEqual(set("a", [o1], 64, noCall, 0, [0, 1, [[2, 0, ["b", o2]]]]),
+    [0, 1, [[6, 0, ["b", o2, "a", o1]]]]);
 
   const n = [0, 1, [[2, 0, ["b", o2]]]];
 
