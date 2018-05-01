@@ -1,3 +1,4 @@
+/* @flow */
 import test      from "ava";
 import { EMPTY,
          LEVEL,
@@ -71,6 +72,14 @@ test("set deep same bits", t => {
     [0, 1, [[0, 1, [[0, 1, [
     [0, 1, [[0, 1, [[0, 1, [
     [0, 1, [["a", o1, "b", o2]]]]]]]]]]]]]]]);
+});
+
+test("set subnode", t => {
+  const o1 = {};
+  const o2 = {};
+
+  t.deepEqual(set("a", [o1], 0, noCall, 0, [0, 1, [[2, 0, ["b", o2]]]]),
+	  [0, 1, [[3, 0, ["a", o1, "b", o2]]]]);
 });
 
 test("delete empty", t => {

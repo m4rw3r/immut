@@ -12,7 +12,19 @@ import { /*arrayInsert,*/
          arrayRemoveAndAdd,
 /* arrayRemovePair */ } from "../util";
 
-type Bitmap = number;
+/*
+
+Implementation of a Lean Hash Array Mapped Trie
+
+*/
+
+type Bitmap  = number;
+type Some<T> = [T];
+type None    = 0;
+
+export type Option<T>  =
+    Some<T>
+  | None;
 
 type HashNode<K, V> = [
   /** Datamap */
@@ -23,16 +35,10 @@ type HashNode<K, V> = [
   Array<any>,
 ];
 
-type Some<T> = [T];
-type None    = 0;
-
 export type Node<K, V> =
     HashNode<K, V>
   | ArrayNode<K, V>
   | 0;
-export type Option<T>  =
-    Some<T>
-  | None;
 
 /**
  * Number of bits per level.
@@ -84,29 +90,25 @@ export const EMPTY: Node<any, any> = 0;
 function mergeEntries<K, V>(shift: number, k1: K, h1: number, v1: V, k2: K, h2: number, v2: V): Node<K, V> {
   if(shift >= 32) {
     // Preserve insertion order
-    // TODO: Cast to ArrayNode<K, V>
-    return ([k2, v2, k1, v1]: any);
+    return [k2, v2, k1, v1];
   }
 
   const masked1 = (h1 >>> shift) & MASK;
   const masked2 = (h2 >>> shift) & MASK;
 
-  return ((masked1 !== masked2
+  return masked1 !== masked2
     ? [(1 << masked1) | (1 << masked2), 0, masked1 < masked2 ? [k1, v1, k2, v2] : [k2, v2, k1, v1]]
-    : [0, (1 << masked1), [mergeEntries(shift + LEVEL, k1, h1, v1, k2, h2, v2)]]): HashNode<K, V>);
+    : [0, (1 << masked1), [mergeEntries(shift + LEVEL, k1, h1, v1, k2, h2, v2)]];
 }
 
 export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>, shift: number, node: Node<K, V>): Node<K, V> {
   if(shift >= 32) {
     /*:: node = ((node: any): ArrayNode<K, V>); */
-
     // FIXME: Proper adding and removal, need to collapse the tree to the minimal tree on delete
     return op
       ? arrayNodeSet(key, op[0], node)
       : arrayNodeDel(key, node);
   }
-
-  /*:: node = ((node: any): HashNode<K, V>); */
 
   const bit = bitpos(hash, shift);
 
@@ -116,13 +118,23 @@ export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>
       : (EMPTY: Node<K, V>);
   }
 
+  /*:: node = ((node: any): HashNode<K, V>); */
+
   const [datamap, nodemap, array] = node;
   const keyIdx                    = 2 * index(datamap, bit);
   const nodeIdx                   = array.length - 1 - index(nodemap, bit);
 
   if((nodemap & bit) !== 0) {
     // Exists in subnode
-    throw new Error("Not implemented: Exists in subnode");
+    const n = set(key, op, hash, hashFn, shift + LEVEL, array[nodeIdx]);
+
+    return n !== node
+      ? [
+          datamap,
+          nodemap,
+          arrayRemoveAndAdd(array, nodeIdx, 1, nodeIdx, [n])
+        ]
+      : node;
   }
 
   if((datamap & bit) !== 0) {
@@ -132,29 +144,29 @@ export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>
         // delete
         // TODO: Compact the tree
         return nodeArity(datamap, nodemap) !== 1
-          ? ([
+          ? [
               datamap ^ bit,
               nodemap,
               /* arrayRemovePair(array, keyIdx) */
               arrayRemoveAndAdd(array, keyIdx, 2, 0, [])
-            ]: HashNode<K, V>)
+            ]
           : (EMPTY: Node<K, V>);
       }
 
       // replace if not equal
       return array[keyIdx + 1] !== op[0]
-        ? ([
+        ? [
           datamap,
           nodemap,
           /* arrayReplace(array, keyIdx + 1, op[0]) */
           arrayRemoveAndAdd(array, keyIdx + 1, 1, keyIdx + 1, (op: any))
-        ]: HashNode<K, V>)
+        ]
         : node;
     }
 
     if(op) {
       // We have a collision in the sub-hash, split out to a new node
-      return ([
+      return [
         datamap ^ bit,
         nodemap | bit,
         arrayRemoveAndAdd(array, keyIdx, 2, nodeIdx - 1, [
@@ -163,18 +175,18 @@ export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>
             key, hash, op[0],
             (array[keyIdx]: K), hashFn((array[keyIdx]: K)), (array[keyIdx + 1]: V))
         ])
-      ]: HashNode<K, V>);
+      ];
     }
   }
 
   return ! op
     ? node
-    : ([
+    : [
       datamap | bit,
       nodemap,
       /*arrayInsert(array, keyIdx, key, op[0])*/
       arrayRemoveAndAdd(array, 0, 0, keyIdx, [key, op[0]])
-    ]: HashNode<K, V>);
+    ];
 }
 
 export function get<K, V>(key: K, hash: number, node: Node<K, V>): ?V {
