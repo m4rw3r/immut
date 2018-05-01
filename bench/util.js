@@ -27,3 +27,29 @@ stats.rme.toFixed(2) + '% (' + size + ' run' + (size == 1 ? '' : 's') + ' sample
 module.exports.benchError = function benchError(error) {
   console.error(error);
 }
+
+module.exports.MapObject = MapObject;
+
+module.exports.ImmutableMapObject = ImmutableMapObject;
+
+function MapObject() {};
+
+MapObject.prototype.set = function(k, v) {
+  this[k] = v;
+
+  return this;
+};
+
+MapObject.prototype.get = function(k) {
+  return this[k];
+};
+
+function ImmutableMapObject() {};
+
+ImmutableMapObject.prototype.set = function(k, v) {
+  return Object.assign(new ImmutableMapObject(), this, { [k]: v });
+};
+
+ImmutableMapObject.prototype.get = function(k) {
+  return this[k];
+};

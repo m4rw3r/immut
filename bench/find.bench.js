@@ -1,10 +1,9 @@
 /* @flow */
 
-require("babel-register");
-
-let Benchmark              = require("benchmark");
-let { arrayMapSet,
-      arrayMapGet }        = require("../dist");
+let Benchmark               = require("benchmark");
+let { HashMap: FJsHashMap } = require("../dist");
+let { Map: ImmutableJsMap } = require("immutable");
+let { empty: HamtMap }        = require("hamt");
 let { lpad,
       rpad,
       benchCycle,
@@ -12,16 +11,30 @@ let { lpad,
       MapObject,
       ImmutableMapObject } = require("./util");
 
+function hamtHash(str) {
+    var type = typeof str;
+    if (type === 'number') return str;
+    if (type !== 'string') str += '';
+
+    var hash = 0;
+    for (var i = 0, len = str.length; i < len; ++i) {
+        var c = str.charCodeAt(i);
+        hash = (hash << 5) - hash + c | 0;
+    }
+    return hash;
+};
+
 let sizes = [10, 100, 1000];
 let types = {
   //"fjs.Map":         () => new FJSMap(),
-  //"fjs.HashMap":     () => new FJSHashMap(),
-  //"ImmutableJS.Map": ImmutableJSMap,
+  "fjs.HashMap":     FJsHashMap.withHashFn.bind(null, hamtHash),
+  "ImmutableJs.Map": ImmutableJsMap,
+  "hamt.Map":        () => HamtMap,
   //"ibtree BTMap":    () => new BTMap(),
-  "ArrayMap":        () => 0,
+  //"ArrayMap":        () => 0,
   "Native Map":      () => new Map(),
-  "{} as Map":       () => new MapObject(),
-  "Object.assign":   () => new ImmutableMapObject()
+  //"{} as Map":       () => new MapObject(),
+  //"Object.assign":   () => new ImmutableMapObject()
 };
 
 let suite   = new Benchmark.Suite();
