@@ -32,7 +32,7 @@ type HashNode<K, V> = [
   /** Nodemap */
   Bitmap,
   /**
-   * Map of node entries, key-value pairs go first with keys on even indices
+   * Array of node entries, key-value pairs go first with keys on even indices
    * and values on odd, after that we have the nodes listed in the nodemap
    * bitmap.
    */
@@ -141,21 +141,26 @@ export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>
       : node;
   }
 
+  if( ! op) {
+    if((datamap & bit) !== 0 && array[keyIdx] === key) {
+      // delete
+      // TODO: Compact the tree
+      return nodeArity(datamap, nodemap) !== 1
+        ? [
+            datamap ^ bit,
+            nodemap,
+            /* arrayRemovePair(array, keyIdx) */
+            arrayRemoveAndAdd(array, keyIdx, 2, 0, [])
+          ]
+        : EMPTY;
+    }
+
+    return node;
+  }
+
   if((datamap & bit) !== 0) {
     if(array[keyIdx] === key) {
       // Duplicate
-      if( ! op) {
-        // delete
-        // TODO: Compact the tree
-        return nodeArity(datamap, nodemap) !== 1
-          ? [
-              datamap ^ bit,
-              nodemap,
-              /* arrayRemovePair(array, keyIdx) */
-              arrayRemoveAndAdd(array, keyIdx, 2, 0, [])
-            ]
-          : EMPTY;
-      }
 
       // replace if not equal
       return array[keyIdx + 1] !== op[0]
@@ -168,29 +173,25 @@ export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>
         : node;
     }
 
-    if(op) {
-      // We have a collision in the sub-hash, split out to a new node
-      return [
-        datamap ^ bit,
-        nodemap | bit,
-        arrayRemoveAndAdd(array, keyIdx, 2, nodeIdx - 1, [
-          mergeEntries(
-            shift + LEVEL,
-            key, hash, op[0],
-            (array[keyIdx]: K), hashFn((array[keyIdx]: K)), (array[keyIdx + 1]: V))
-        ])
-      ];
-    }
+    // We have a collision in the sub-hash, split out to a new node
+    return [
+      datamap ^ bit,
+      nodemap | bit,
+      arrayRemoveAndAdd(array, keyIdx, 2, nodeIdx - 1, [
+        mergeEntries(
+          shift + LEVEL,
+          key, hash, op[0],
+          (array[keyIdx]: K), hashFn((array[keyIdx]: K)), (array[keyIdx + 1]: V))
+      ])
+    ];
   }
 
-  return ! op
-    ? node
-    : [
-      datamap | bit,
-      nodemap,
-      /*arrayInsert(array, keyIdx, key, op[0])*/
-      arrayRemoveAndAdd(array, 0, 0, keyIdx, [key, op[0]])
-    ];
+  return [
+    datamap | bit,
+    nodemap,
+    /*arrayInsert(array, keyIdx, key, op[0])*/
+    arrayRemoveAndAdd(array, 0, 0, keyIdx, [key, op[0]])
+  ];
 }
 
 export function get<K, V>(key: K, hash: number, node: Node<K, V>): ?V {
