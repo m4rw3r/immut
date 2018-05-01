@@ -6,10 +6,11 @@ import { /*arrayInsert,*/
 /* arrayRemovePair */ } from "../util";
 
 /**
- * List of key-value pairs, keys on even indices and values on odd.
+ * A collision node type, key-value pairs are ordered after insertion with the
+ * last inserted one first and keys on even indices and values on odd.
  *
  * Fixed-length tuple type to satisfy flow and differentiate, it is
- * actually 2*N in length
+ * actually 2*N in length where N > 0.
  */
 export type ArrayNode<K, V> =
     [K, V]

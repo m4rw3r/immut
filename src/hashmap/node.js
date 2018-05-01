@@ -31,7 +31,11 @@ type HashNode<K, V> = [
   Bitmap,
   /** Nodemap */
   Bitmap,
-  /** Nested */
+  /**
+   * Map of node entries, key-value pairs go first with keys on even indices
+   * and values on odd, after that we have the nodes listed in the nodemap
+   * bitmap.
+   */
   Array<any>,
 ];
 
@@ -128,7 +132,7 @@ export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>
     // Exists in subnode
     const n = set(key, op, hash, hashFn, shift + LEVEL, array[nodeIdx]);
 
-    return n !== node
+    return n !== array[nodeIdx]
       ? [
           datamap,
           nodemap,

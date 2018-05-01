@@ -53,6 +53,7 @@ test("set deep duplicate bits", t => {
   t.deepEqual(a, [1 << 0, 0, ["a", o1]]);
   t.deepEqual(set("b", [o2], 32, rehash, 0, a),
     [0, 1, [[1 | 2, 0, ["a", o1, "b", o2]]]]);
+  t.deepEqual(set("a", [o1], 0, noCall, 0, a), [1 << 0, 0, ["a", o1]]);
 });
 
 test("set deep same bits", t => {
@@ -75,11 +76,16 @@ test("set deep same bits", t => {
 });
 
 test("set subnode", t => {
-  const o1 = {};
-  const o2 = {};
+  const o1 = { o1: true };
+  const o2 = { o2: true };
 
   t.deepEqual(set("a", [o1], 0, noCall, 0, [0, 1, [[2, 0, ["b", o2]]]]),
-	  [0, 1, [[3, 0, ["a", o1, "b", o2]]]]);
+    [0, 1, [[3, 0, ["a", o1, "b", o2]]]]);
+
+  const n = [0, 1, [[2, 0, ["b", o2]]]];
+
+  t.is(set("b", [o2], 32, noCall, 0, n), n);
+  t.deepEqual(set("b", [o1], 32, noCall, 0, n), [0, 1, [[2, 0, ["b", o1]]]]);
 });
 
 test("delete empty", t => {
