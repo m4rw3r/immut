@@ -114,8 +114,8 @@ export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>
 
   if( ! node) {
     return op
-      ? ([bit, 0, [key, op[0]]]: HashNode<K, V>)
-      : (EMPTY: Node<K, V>);
+      ? [bit, 0, [key, op[0]]]
+      : EMPTY;
   }
 
   /*:: node = ((node: any): HashNode<K, V>); */
@@ -150,7 +150,7 @@ export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>
               /* arrayRemovePair(array, keyIdx) */
               arrayRemoveAndAdd(array, keyIdx, 2, 0, [])
             ]
-          : (EMPTY: Node<K, V>);
+          : EMPTY;
       }
 
       // replace if not equal
