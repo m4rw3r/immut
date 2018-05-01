@@ -31,8 +31,27 @@ const { get, set, del } = withHasher(genericHash);
 
 export { EMPTY, get, set, del };
 
+/**
+ * Creates a new HashMap wrapper object around the given root.
+ */
+function createMap<K, V>(root: Node<K, V>, hashFn: HashFn<K>): HashMap<K, V> {
+  const map = Object.create(HashMap.prototype);
+
+  map._root   = root;
+  map._hashFn = hashFn;
+
+  return map;
+}
+
 export class HashMap<K, V> {
-  static DEFAULT_HASH: HashFn<any>;
+  static DEFAULT_HASH: HashFn<any> = genericHash;
+  /**
+   * Creates a new HashMap with the given hashFn hash-function to hash keys.
+   */
+  static withHashFn(hashFn: HashFn<K>): HashMap<K, V> {
+    return createMap(EMPTY, hashFn);
+  }
+
   _root:   Node<K, V>;
   _hashFn: HashFn<K>;
   constructor() {
@@ -45,13 +64,13 @@ export class HashMap<K, V> {
   set(k: K, v: V): HashMap<K, V> {
     let n = _set(k, [v], this._hashFn(k), this._hashFn, 0, this._root);
 
-    return n !== this._root ? Object.create(HashMap.prototype, ({ _root: n, _hashFn: this._hashFn }: any)) : this;
+    return n !== this._root ? createMap(n, this._hashFn) : this;
   }
   del(k: K): HashMap<K, V> {
     let n =  _set(k, 0, this._hashFn(k), this._hashFn, 0, this._root);
 
-    return n !== this._root ? Object.create(HashMap.prototype, ({ _root: n, _hashFn: this._hashFn }: any)) : this;
+    return n !== this._root ? createMap(n, this._hashFn) : this;
   }
 }
 
-HashMap.DEFAULT_HASH = genericHash;
+// HashMap.DEFAULT_HASH = genericHash;
