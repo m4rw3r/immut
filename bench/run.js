@@ -21,8 +21,8 @@ Benchmark.options = Object.assign(Benchmark.options, {
   minSamples: argv.minSamples || 1,
 });
 
-const folder  = path.resolve(dir);
-const files = fs.readdirSync(folder)
+const folder = path.resolve(dir);
+const files  = fs.statSync(folder).isFile() ? [folder] : fs.readdirSync(folder)
   .map(file => folder + "/" + file)
   .filter(file => {
     const stat = fs.statSync(file);
