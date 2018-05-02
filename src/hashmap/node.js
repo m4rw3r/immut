@@ -200,11 +200,9 @@ export function del<K, V>(key: K, hash: number, shift: number, node: RootNode<K,
       if(numKeys === 2) {
         // Prepare node for migration upwards
         return [
-          // The keys are guaranteed to share the hash at shift - LEVEL since we
-          // are in a subnode
-          // FIXME: Is that really true? can we really do that since it will
-          // break down if we have to move more than one step upwards
-          shift === 0 ? datamap ^ bit : bitpos(hash, shift - LEVEL),
+          // We either are already at the top-level, or the node will be
+          // incorporated into the parent, or become the top-level:
+          shift === 0 ? datamap ^ bit : bitpos(hash, 0),
           0,
           idx === 0 ? [array[2], array[3]] : [array[0], array[1]],
         ];
@@ -241,8 +239,8 @@ export function del<K, V>(key: K, hash: number, shift: number, node: RootNode<K,
             ? (newNode: any)
             // Merge the ArrayNode
             : [
-              // We shared this bit with the node
-              bit,
+              // We shared this bit with the node, propagate upwards
+              bitpos(hash, 0),
               0,
               // Correct K-V order already
               ((newNode: any): Array<K | V>),
