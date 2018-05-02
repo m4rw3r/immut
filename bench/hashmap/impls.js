@@ -89,9 +89,9 @@ const objAssign = {
 
 module.exports = [
   immutHashMap,
-  immutHashMapHamtHash,
+  //immutHashMapHamtHash,
   immutableMap,
-  hamtMap,
+  //hamtMap,
   hamtMapImmutHash,
   //nativeMap,
   //objMap,

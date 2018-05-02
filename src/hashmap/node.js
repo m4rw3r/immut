@@ -7,10 +7,10 @@ import { get as arrayNodeGet,
          set as arrayNodeSet,
          del as arrayNodeDel } from "./arraynode";
 
-import { /*arrayInsert,*/
-  /*arrayReplace, */
+import { arrayInsert,
+         arrayReplace,
          arrayRemoveAndAdd,
-/* arrayRemovePair */ } from "../util";
+         arrayRemovePair } from "../util";
 
 /*
 
@@ -18,13 +18,8 @@ Implementation of a Lean Hash Array Mapped Trie
 
 */
 
-type Bitmap  = number;
-type Some<T> = [T];
-type None    = 0;
-
-export type Option<T>  =
-    Some<T>
-  | None;
+type Bitmap    = number;
+type EmptyNode = 0;
 
 type HashNode<K, V> = [
   /** Datamap */
@@ -42,7 +37,11 @@ type HashNode<K, V> = [
 export type Node<K, V> =
     HashNode<K, V>
   | ArrayNode<K, V>
-  | 0;
+  | EmptyNode;
+
+export type RootNode<K, V> =
+    HashNode<K, V>
+  | EmptyNode;
 
 /**
  * Number of bits per level.
@@ -89,7 +88,7 @@ const nodeArity = (datamap: Bitmap, nodemap: Bitmap): number =>
 /**
  * The empty node.
  */
-export const EMPTY: Node<any, any> = 0;
+export const EMPTY: EmptyNode = 0;
 
 function mergeEntries<K, V>(shift: number, k1: K, h1: number, v1: V, k2: K, h2: number, v2: V): Node<K, V> {
   if(shift >= 32) {
@@ -111,70 +110,32 @@ function mergeEntries<K, V>(shift: number, k1: K, h1: number, v1: V, k2: K, h2: 
        [mergeEntries(shift + LEVEL, k1, h1, v1, k2, h2, v2)]];
 }
 
-export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>, shift: number, node: Node<K, V>): Node<K, V> {
-  if(shift >= 32) {
-    /*:: node = ((node: any): ArrayNode<K, V>); */
-    // FIXME: Proper adding and removal, need to collapse the tree to the minimal tree on delete
-    return op
-      ? arrayNodeSet(key, op[0], node)
-      : arrayNodeDel(key, node);
-  }
-
+export function set<K, V>(key: K, value: V, hash: number, hashFn: HashFn<K>, shift: number, node: RootNode<K, V>): RootNode<K, V> {
   const bit = bitpos(hash, shift);
 
+  // TODO: Maybe move?
   if( ! node) {
-    return op
-      ? [bit, 0, [key, op[0]]]
-      : EMPTY;
+    return [bit, 0, [key, value]];
   }
 
-  /*:: node = ((node: any): HashNode<K, V>); */
-
-  const [datamap, nodemap, array] = node;
-  const keyIdx                    = 2 * index(datamap, bit);
-  const nodeIdx                   = array.length - 1 - index(nodemap, bit);
-
-  if((nodemap & bit) !== 0) {
-    // Exists in subnode
-    const n = set(key, op, hash, hashFn, shift + LEVEL, array[nodeIdx]);
-
-    return n !== array[nodeIdx]
-      ? [
-          datamap,
-          nodemap,
-          arrayRemoveAndAdd(array, nodeIdx, 1, nodeIdx, [n])
-        ]
-      : node;
-  }
-
-  if( ! op) {
-    if((datamap & bit) !== 0 && array[keyIdx] === key) {
-      // delete
-      // TODO: Compact the tree
-      return nodeArity(datamap, nodemap) !== 1
-        ? [
-            datamap ^ bit,
-            nodemap,
-            /* arrayRemovePair(array, keyIdx) */
-            arrayRemoveAndAdd(array, keyIdx, 2, 0, [])
-          ]
-        : EMPTY;
-    }
-
-    return node;
-  }
+  const [
+    datamap,
+    nodemap,
+    array
+  ]         = node;
+  const idx = index(datamap, bit);
 
   if((datamap & bit) !== 0) {
-    if(array[keyIdx] === key) {
-      // Duplicate
+    const k = ((array[2 * idx]: any): K);
+    const v = ((array[2 * idx + 1]: any): V);
 
-      // replace if not equal
-      return array[keyIdx + 1] !== op[0]
+    if(k === key) {
+      // Duplicate, replace if not equal
+      return v !== value
         ? [
           datamap,
           nodemap,
-          /* arrayReplace(array, keyIdx + 1, op[0]) */
-          arrayRemoveAndAdd(array, keyIdx + 1, 1, keyIdx + 1, (op: any))
+          arrayReplace(array, 2 * idx + 1, value),
         ]
         : node;
     }
@@ -183,35 +144,136 @@ export function set<K, V>(key: K, op: Option<V>, hash: number, hashFn: HashFn<K>
     return [
       datamap ^ bit,
       nodemap | bit,
-      arrayRemoveAndAdd(array, keyIdx, 2, nodeIdx - 1, [
+      arrayRemoveAndAdd(array, 2 * idx, 2, array.length - 2, [
         mergeEntries(
           shift + LEVEL,
-          key, hash, op[0],
-          (array[keyIdx]: K), hashFn((array[keyIdx]: K)), (array[keyIdx + 1]: V))
+          key, hash, value,
+          k, hashFn(k), v)
       ])
     ];
+  }
+
+  if((nodemap & bit) !== 0) {
+    // Exists in subnode
+    const nodeIdx = array.length - 1 - index(nodemap, bit);
+    const subNode = array[nodeIdx];
+    const newNode = shift + LEVEL < 32
+      ? set(key, value, hash, hashFn, shift + LEVEL, subNode)
+      : arrayNodeSet(key, value, subNode);
+
+    return newNode !== subNode
+      ? [
+          datamap,
+          nodemap,
+          arrayReplace(array, nodeIdx, newNode)
+        ]
+      : node;
   }
 
   return [
     datamap | bit,
     nodemap,
-    /*arrayInsert(array, keyIdx, key, op[0])*/
-    arrayRemoveAndAdd(array, 0, 0, keyIdx, [key, op[0]])
+    arrayInsert(array, 2 * idx, key, value),
   ];
 }
 
-export function get<K, V>(key: K, hash: number, node: Node<K, V>): ?V {
+export function del<K, V>(key: K, hash: number, shift: number, node: RootNode<K, V>): RootNode<K, V> {
+  if( ! node) {
+    return node;
+  }
+
+  const [
+    datamap,
+    nodemap,
+    array,
+  ]         = node;
+  const bit = bitpos(hash, shift);
+  const idx = index(datamap, bit);
+
+  if((datamap & bit) !== 0 && array[2 * idx] === key) {
+    // delete
+
+    if(nodemap === 0) {
+      const numKeys = popcnt(datamap);
+
+      if(numKeys === 2) {
+        // Prepare node for migration upwards
+        return [
+          // The keys are guaranteed to share the hash at shift - LEVEL since we
+          // are in a subnode
+          shift === 0 ? datamap ^ bit : bitpos(hash, shift - LEVEL),
+          0,
+          idx === 0 ? [array[2], array[3]] : [array[0], array[1]],
+        ];
+      }
+
+      if(numKeys === 1) {
+        return EMPTY;
+      }
+    }
+
+    return [
+      datamap ^ bit,
+      nodemap,
+      arrayRemovePair(array, 2 * idx),
+    ];
+  }
+
+  if((nodemap & bit) !== 0) {
+    const nodeIdx = array.length - 1 - index(nodemap, bit);
+    const subNode = array[nodeIdx];
+    const newNode = shift + LEVEL < 32
+      ? del(key, hash, shift + LEVEL, subNode)
+      : arrayNodeDel(key, subNode);
+
+    if(newNode !== subNode) {
+      if(newNode !== 0 &&
+        (newNode.length === 3 && (newNode[1] === 0 && popcnt((newNode: any)[0]) === 1) ||
+         newNode.length === 2)) {
+        // single-value hash-node or ArrayNode, we could propagate upwards
+        if(datamap === 0 && popcnt(nodemap) === 1) {
+          // it is the only one in this node, we have prepared to be able to propagate
+          return newNode.length === 3
+            // Already prepared HashNode
+            ? (newNode: any)
+            // Merge the ArrayNode
+            : [
+              // We shared this bit with the node
+              bit,
+              0,
+              // Correct K-V order already
+              ((newNode: any): Array<K | V>),
+            ];
+        }
+
+        // Copy and migrate to inline
+        return [
+          datamap | bit,
+          nodemap ^ bit,
+          arrayRemoveAndAdd(array, nodeIdx + 1, 1, 2 * idx,
+            newNode.length === 3
+              // HashNode<K, V>, with a single key-value
+              ? ((newNode: any)[2]: Array<K | V>)
+              // ArrayNode<K, V>, with a single key-value
+              : ((newNode: any): Array<K | V>)),
+        ];
+      }
+
+      return [
+        datamap,
+        nodemap,
+        arrayReplace(array, nodeIdx, newNode)
+      ];
+    }
+  }
+
+  return node;
+}
+
+export function get<K, V>(key: K, hash: number, node: RootNode<K, V>): ?V {
   let shift = 0;
 
   while(node) {
-    if(shift >= 32) {
-      /*:: node = ((node: any): ArrayNode<K, V>);*/
-
-      return arrayNodeGet(key, node);
-    }
-
-    /*:: node = ((node: any): HashNode<K, V>);*/
-
     const [datamap, nodemap, array] = node;
     const bit                       = bitpos(hash, shift);
     const keyIdx                    = 2 * index(datamap, bit);
@@ -225,9 +287,11 @@ export function get<K, V>(key: K, hash: number, node: Node<K, V>): ?V {
       break;
     }
 
-    node   = (array[nodeIdx]: Node<K, V>);
+    node   = (array[nodeIdx]: HashNode<K, V>);
     shift += LEVEL;
-  }
 
-  return undefined;
+    if(shift >= 32) {
+      return arrayNodeGet(key, ((node: any): ArrayNode<K, V>));
+    }
+  }
 }

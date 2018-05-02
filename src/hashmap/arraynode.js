@@ -1,9 +1,8 @@
 /* @flow */
 
-import { /*arrayInsert,*/
-  /*arrayReplace, */
-         arrayRemoveAndAdd,
-/* arrayRemovePair */ } from "../util";
+import { arrayInsert,
+         arrayReplace,
+         arrayRemovePair } from "../util";
 
 /**
  * A collision node type, key-value pairs are ordered after insertion with the
@@ -42,16 +41,22 @@ export function set<K, V>(key: K, value: V, node: ArrayNode<K, V>): ArrayNode<K,
     }
   }
 
-  return node[i + 1] !== value
-    ? ((arrayRemoveAndAdd((node: any), i, 2, i, [key, value]): any): ArrayNode<K, V>)
-    : node;
+  if(i >= node.length) {
+    return ((arrayInsert((node: any), i, key, value): any): ArrayNode<K, V>);
+  }
+
+  if(node[i + 1] !== value) {
+    return ((arrayReplace((node: any), i + 1, value): any): ArrayNode<K, V>);
+  }
+
+  return node;
 }
 
 export function del<K, V>(key: K, node: ArrayNode<K, V>): ArrayNode<K, V> {
   for(let i = 0; i < node.length; i += 2) {
     // Evens are K
     if(node[i] === key) {
-      return ((/* arrayRemovePair(node, i) */ arrayRemoveAndAdd((node: any), i, 2, 0, []): any): ArrayNode<K, V>);
+      return ((arrayRemovePair((node: any), i): any): ArrayNode<K, V>);
     }
   }
 

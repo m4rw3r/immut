@@ -1,6 +1,6 @@
 /* @flow */
 
-export function arrayInsert<K, V>(array: Array<mixed>, idx: number, key: K, val: V): Array<mixed> {
+export function arrayInsert<T>(array: Array<T>, idx: number, key: T, val: T): Array<T> {
   const len = array.length;
   const arr = new Array(len + 2);
   let   i   = 0;
