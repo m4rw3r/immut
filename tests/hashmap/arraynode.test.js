@@ -43,4 +43,5 @@ test("del", t => {
   t.is(del("d", b), b);
 
   t.deepEqual(del("b", n(["a", "b", "b", "c"])), n(["a", "b"]));
+  t.deepEqual(del("a", n(["a", "b", "b", "c"])), n(["b", "c"]));
 });

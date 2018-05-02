@@ -1,31 +1,27 @@
 /* @flow */
 
-export function arrayInsert<T>(array: Array<T>, idx: number, key: T, val: T): Array<T> {
-  const len = array.length;
-  const arr = new Array(len + 2);
-  let   i   = 0;
-  let   j   = 0;
+export function arrayInsert<T>(src: Array<T>, idx: number, key: T, val: T): Array<T> {
+  const arr = new Array(src.length + 2);
 
-  while(i < idx) {
-    arr[j++] = array[i++];
+  for(let i = 0; i < idx; i++) {
+    arr[i] = src[i];
   }
 
-  arr[j++] = (key: any);
-  arr[j++] = (val: any);
+  arr[idx] = (key: any);
+  arr[idx + 1] = (val: any);
 
-  while(i < len) {
-    arr[j++] = array[i++];
+  for(let i = idx, j = idx + 2, l = src.length - idx; i < l; i++, j++) {
+    arr[j] = src[i];
   }
 
   return arr;
 }
 
-export function arrayReplace<T>(array: Array<T>, idx: number, elem: T): Array<T> {
-  const len = array.length;
-  const arr = new Array(len);
+export function arrayReplace<T>(src: Array<T>, idx: number, elem: T): Array<T> {
+  const arr = new Array(src.length);
 
-  for(let i = 0; i < len; i++) {
-    arr[i] = array[i];
+  for(let i = 0; i < src.length; i++) {
+    arr[i] = src[i];
   }
 
   arr[idx] = elem;
@@ -33,21 +29,15 @@ export function arrayReplace<T>(array: Array<T>, idx: number, elem: T): Array<T>
   return arr;
 }
 
-export function arrayRemovePair<T>(array: Array<T>, idx: number): Array<T> {
-  const len = array.length;
-  const arr = new Array(len - 2);
-  let   i   = 0;
-  let   j   = 0;
+export function arrayRemovePair<T>(src: Array<T>, idx: number): Array<T> {
+  const arr = new Array(src.length - 2);
 
-  while(j < idx) {
-    arr[i++] = array[j++];
+  for(let i = 0; i < idx; i++) {
+    arr[i] = src[i];
   }
 
-  ++j;
-  ++j;
-
-  while(j < len) {
-    arr[i++] = array[j++];
+  for(let i = idx, j = idx + 2; j < src.length; i++, j++) {
+    arr[i] = src[j];
   }
 
   return arr;

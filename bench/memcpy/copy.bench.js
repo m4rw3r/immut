@@ -49,8 +49,8 @@ const memcpyAdd = (src, srcOff, a, b) => {
   arr[srcOff + 1] = b;
 
   //memcpy(src, srcOff, src.length - srcOff, arr, srcOff + 2);
-  for(let i = srcOff, j = srcOff + 2, l = src.length - srcOff; i < l; i++, j++) {
-    arr[i] = src[i];
+  for(let i = srcOff + 2, j = srcOff; j < src.length; i++, j++) {
+    arr[i] = src[j];
   }
 
   return arr;
@@ -63,8 +63,8 @@ const memcpyRemove = (src, srcOff, len) => {
     arr[i] = src[i];
   }
 
-  for(let i = srcOff, j = srcOff + len, l = src.length - srcOff - len; i < l; i++, j++) {
-    arr[j] = src[i];
+  for(let i = srcOff, j = srcOff + len; j < src.length; i++, j++) {
+    arr[i] = src[j];
   }
 
   // memcpy(src, 0, srcOff, arr, 0);
@@ -73,7 +73,7 @@ const memcpyRemove = (src, srcOff, len) => {
   return arr;
 };
 
-const memcpyReplace = (src, srcOff, a, b) => {
+const memcpyReplace = (src, srcOff, b) => {
   const arr = new Array(src.length);
 
   //memcpy(src, 0, src.length, arr, 0);
@@ -81,7 +81,6 @@ const memcpyReplace = (src, srcOff, a, b) => {
     arr[i] = src[i];
   }
 
-  arr[srcOff]     = a;
   arr[srcOff + 1] = b;
 
   return arr;
@@ -137,7 +136,7 @@ const replace = (new Benchmark.Suite("Replace"))
   })
   .add("memcpy + set", () => {
     for(var i = 0; i < positions.length; i++) {
-      memcpyReplace(arr, positions[i], "p", {})
+      memcpyReplace(arr, positions[i], {})
     }
   });
 
