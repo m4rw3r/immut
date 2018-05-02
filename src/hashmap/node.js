@@ -201,6 +201,8 @@ export function del<K, V>(key: K, hash: number, shift: number, node: RootNode<K,
         return [
           // The keys are guaranteed to share the hash at shift - LEVEL since we
           // are in a subnode
+          // FIXME: Is that really true? can we really do that since it will
+          // break down if we have to move more than one step upwards
           shift === 0 ? datamap ^ bit : bitpos(hash, shift - LEVEL),
           0,
           idx === 0 ? [array[2], array[3]] : [array[0], array[1]],
