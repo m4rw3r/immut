@@ -1,18 +1,29 @@
 /* @flow */
 
-const fs               = require("fs");
-const path             = require("path");
-const Benchmark        = require("benchmark");
-const { textReporter } = require("./util");
+const fs            = require("fs");
+const path          = require("path");
+const Benchmark     = require("benchmark");
+const minimist      = require("minimist");
+const { reporters } = require("./util");
+
+const argv     = minimist(process.argv.slice(2));
+const dir      = argv._[0];
+const reporter = reporters[argv.reporter || "text"];
+
+if( ! reporter) {
+  console.error(`Unknown reporter '${argv.reporter}'`);
+
+  return process.exit(-1);
+}
 
 Benchmark.options = Object.assign(Benchmark.options, {
   maxTime:    0.5,
   minSamples: 1,
 });
 
-const dir   = path.resolve("./bench");
-const files = fs.readdirSync(dir)
-  .map(file => dir + "/" + file)
+const folder  = path.resolve(dir);
+const files = fs.readdirSync(folder)
+  .map(file => folder + "/" + file)
   .filter(file => {
     const stat = fs.statSync(file);
 
@@ -24,4 +35,4 @@ Benchmark.invoke(suites, Object.assign({
   name:   "run",
   queued: true,
   async:  false,
-}, textReporter));
+}, reporter));

@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "ava": "ava",
+    "bench": "node bench/run.js ./bench/hashmap",
     "build": "rollup -c && cp src/flowstub.js dist/index.js.flow && cp src/flowstub.js dist/index.es2015.js.flow",
     "build-prod": "cross-env NODE_ENV=production rollup -c",
     "prepublish": "npm run build-prod",
@@ -31,6 +32,7 @@
     "hamt": "^2.2.2",
     "immutable": "^4.0.0-rc.9",
     "microtime": "^2.1.7",
+    "minimist": "^1.2.0",
     "nodemon": "^1.17.3",
     "nyc": "^11.7.1",
     "rollup": "^0.58.2",

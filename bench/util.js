@@ -34,4 +34,6 @@ const textReporter = {
   onError: error => console.error(error),
 };
 
-module.exports.textReporter = textReporter;
+module.exports.reporters = {
+  text: textReporter
+};

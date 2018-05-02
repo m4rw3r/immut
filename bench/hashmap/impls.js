@@ -1,5 +1,5 @@
 const { HashMap: ImmutHashMap,
-        hash: immutHash }      = require("../dist");
+        hash: immutHash }      = require("../../dist");
 const { Map: ImmutableMap }    = require("immutable");
 const hamt                     = require("hamt");
 
