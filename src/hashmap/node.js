@@ -252,7 +252,7 @@ export function del<K, V>(key: K, hash: number, shift: number, node: RootNode<K,
         return [
           datamap | bit,
           nodemap ^ bit,
-          arrayRemoveAndAdd(array, nodeIdx + 1, 1, 2 * idx,
+          arrayRemoveAndAdd(array, nodeIdx, 1, 2 * idx,
             newNode.length === 3
               // HashNode<K, V>, with a single key-value
               ? ((newNode: any)[2]: Array<K | V>)
