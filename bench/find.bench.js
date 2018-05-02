@@ -1,92 +1,61 @@
 /* @flow */
 
-let Benchmark               = require("benchmark");
-let { HashMap: FJsHashMap } = require("../dist");
-let { Map: ImmutableJsMap } = require("immutable");
-let { empty: HamtMap }        = require("hamt");
-let { lpad,
-      rpad,
-      benchCycle,
-      benchError,
-      MapObject,
-      ImmutableMapObject } = require("./util");
+const Benchmark = require("benchmark");
+const impls     = require("./impls");
 
-function hamtHash(str) {
-    var type = typeof str;
-    if (type === 'number') return str;
-    if (type !== 'string') str += '';
-
-    var hash = 0;
-    for (var i = 0, len = str.length; i < len; ++i) {
-        var c = str.charCodeAt(i);
-        hash = (hash << 5) - hash + c | 0;
-    }
-    return hash;
-};
-
-let sizes = [10, 100, 1000];
-let types = {
-  //"fjs.Map":         () => new FJSMap(),
-  "fjs.HashMap":     FJsHashMap.withHashFn.bind(null, hamtHash),
-  "ImmutableJs.Map": ImmutableJsMap,
-  "hamt.Map":        () => HamtMap,
-  //"ibtree BTMap":    () => new BTMap(),
-  //"ArrayMap":        () => 0,
-  "Native Map":      () => new Map(),
-  //"{} as Map":       () => new MapObject(),
-  //"Object.assign":   () => new ImmutableMapObject()
-};
-
-let suite   = new Benchmark.Suite();
-let options = {
-  maxTime:    0.5,
-  minSamples: 1,
-};
-
-console.log("Preparing...");
+const sizes  = [10, 100, 1000];
+const suites = [];
 
 sizes.forEach(size => {
-  Object.keys(types).forEach(name => {
-    let obj = types[name];
-    let o = obj();
+  const suite = new Benchmark.Suite("Find (number -> number) " + size);
+
+  suite.benchData = {
+    name: "Find",
+    type: "number -> number",
+    size: size,
+  };
+
+  impls.forEach(({ name, immutable, create, get, set }) => {
+    let o = create();
 
     for(var i = 0; i < size; i++) {
-      o = o.set(i, i);
+      o = set(o, i, i);
     }
 
-    suite.add(rpad(name, 16) + " fetch " +  lpad(size + "", 7) + " number -> number", () => {
+    suite.add(name, () => {
       for(var i = 0; i < size; i++) {
-        o.get(i);
+        get(o, i);
       }
-    }, options);
+    });
   });
+
+  suites.push(suite);
 });
 
 sizes.forEach(size => {
-  Object.keys(types).forEach(name => {
-    let obj = types[name];
-    let o   = obj();
+  const suite = new Benchmark.Suite("Find (string -> number) " + size);
+
+  suite.benchData = {
+    name: "Find",
+    type: "string -> number",
+    size: size,
+  };
+
+  impls.forEach(({ name, immutable, create, get, set }) => {
+    let o = create();
 
     for(var i = 0; i < size; i++) {
-      o = o.set("a".repeat(i % 20) + i, i);
+      o = set(o, "a".repeat(i % 20) + i, i);
     }
 
-    suite.add(rpad(name, 16) + " fetch " + lpad(size + "", 7) + " string -> number", () => {
+    suite.add(name, () => {
       for(var i = 0; i < size; i++) {
-        o.get("a".repeat(i % 20) + i, i);
+        get(o, "a".repeat(i % 20) + i, i);
       }
-    }, options);
+    });
   });
+
+  suites.push(suite);
 });
 
-suite.on('cycle', benchCycle);
-
-suite.on('error', benchError);
-
-suite.on('complete', function() {
-  console.log('Fastest is ' + this.filter('fastest').map('name'));
-});
-
-console.log("Starting benchmark");
-
-suite.run();
+module.exports = suites;

@@ -1,55 +1,37 @@
-function formatNumber(number) {
+/* @flow */
+
+const formatNumber = (number) => {
   number = String(number).split('.');
 
   return number[0].replace(/(?=(?:\d{3})+$)(?!\b)/g, ',') +
       (number[1] ? '.' + number[1] : '');
 }
 
-function lpad(str, len) {
-  return (" ".repeat(len) + str).slice(-len);
-}
+const lpad = (str, len) => (" ".repeat(len) + str).slice(-len);
+const rpad = (str, len) => (str + " ".repeat(len)).slice(0, len);
 
-module.exports.lpad = lpad;
+const fastest = ({ stats: a }, { stats: b }) =>
+  a.mean + a.moe > b.mean + b.moe ? 1 : -1;
 
-module.exports.rpad = (str, len) =>
-  (str + " ".repeat(len)).slice(0, len);
+const textReporter = {
+  // Run per finished benchmark suite
+  onCycle: event => {
+    console.log(event.target.name + ":");
 
-module.exports.benchCycle = function benchCycle(event) {
-  let { name, hz, stats } = event.target;
-  let size = stats.sample.length;
+    const namePad = event.target.reduce((a, bench) => Math.max(a, bench.name.length), 0) + 2;
 
-  console.log(name +
-    '  x ' + lpad(formatNumber(hz.toFixed(hz < 100 ? 2 : 0)), 16) + ' ops/sec ' +
-    '\xb1' +
-stats.rme.toFixed(2) + '% (' + size + ' run' + (size == 1 ? '' : 's') + ' sampled)');
-}
+    event.target.sort(fastest).forEach(bench => {
+      let { name, hz, stats } = bench;
+      let size                = stats.sample.length;
 
-module.exports.benchError = function benchError(error) {
-  console.error(error);
-}
+      console.log("  " + rpad(name, namePad) +
+        lpad(formatNumber(hz.toFixed(hz < 100 ? 2 : 0)), 14) + " ops/sec " +
+        "\xb1" + stats.rme.toFixed(2) + "% (" + size + " run" + (size == 1 ? "" : "s") + " sampled)");
+    });
 
-module.exports.MapObject = MapObject;
-
-module.exports.ImmutableMapObject = ImmutableMapObject;
-
-function MapObject() {};
-
-MapObject.prototype.set = function(k, v) {
-  this[k] = v;
-
-  return this;
+    console.log("    Fastest: " + event.target.filter("fastest").map("name"));
+  },
+  onError: error => console.error(error),
 };
 
-MapObject.prototype.get = function(k) {
-  return this[k];
-};
-
-function ImmutableMapObject() {};
-
-ImmutableMapObject.prototype.set = function(k, v) {
-  return Object.assign(new ImmutableMapObject(), this, { [k]: v });
-};
-
-ImmutableMapObject.prototype.get = function(k) {
-  return this[k];
-};
+module.exports.textReporter = textReporter;
