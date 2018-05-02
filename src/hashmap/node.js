@@ -144,6 +144,7 @@ export function set<K, V>(key: K, value: V, hash: number, hashFn: HashFn<K>, shi
     return [
       datamap ^ bit,
       nodemap | bit,
+      // TODO: Replace with specialized
       arrayRemoveAndAdd(array, 2 * idx, 2, array.length - 2, [
         mergeEntries(
           shift + LEVEL,
@@ -252,6 +253,7 @@ export function del<K, V>(key: K, hash: number, shift: number, node: RootNode<K,
         return [
           datamap | bit,
           nodemap ^ bit,
+          // TODO: Replace with specialized
           arrayRemoveAndAdd(array, nodeIdx, 1, 2 * idx,
             newNode.length === 3
               // HashNode<K, V>, with a single key-value
@@ -273,9 +275,7 @@ export function del<K, V>(key: K, hash: number, shift: number, node: RootNode<K,
 }
 
 export function get<K, V>(key: K, hash: number, node: RootNode<K, V>): ?V {
-  let shift = 0;
-
-  while(node) {
+  for(let shift = 0; node;) {
     const [datamap, nodemap, array] = node;
     const bit                       = bitpos(hash, shift);
     const keyIdx                    = 2 * index(datamap, bit);
