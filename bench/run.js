@@ -17,8 +17,8 @@ if( ! reporter) {
 }
 
 Benchmark.options = Object.assign(Benchmark.options, {
-  maxTime:    0.5,
-  minSamples: 1,
+  maxTime:    argv.maxTime || 0.5,
+  minSamples: argv.minSamples || 1,
 });
 
 const folder  = path.resolve(dir);

@@ -22,7 +22,7 @@ function hamtHash(str) {
 const immutHashMap = {
   name:      "immut.HashMap",
   immutable: true,
-  create:    () => new ImmutHashMap(), // ImmutHashMap.withHashFn.bind(null, hamtHash),
+  create:    () => new ImmutHashMap(),
   get:       basicGet,
   set:       basicSet,
 };
