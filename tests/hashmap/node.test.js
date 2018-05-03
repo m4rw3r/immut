@@ -40,13 +40,18 @@ test("set deep shift", t => {
 });
 
 test("set deep duplicate bits", t => {
-  const o1 = {};
-  const o2 = {};
+  const o1 = { name: "o1" };
+  const o2 = { name: "o2" };
 
   const rehash = (hash: string): number => {
     t.is(hash, "a");
 
     return 0;
+  };
+  const rehash2 = (hash: string): number => {
+    t.is(hash, "b");
+
+    return 32;
   };
 
   let a = set("a", o1, 0, noCall, 0, EMPTY);
@@ -55,6 +60,8 @@ test("set deep duplicate bits", t => {
   t.deepEqual(set("b", o2, 32, rehash, 0, a),
     [0, 1, [[1 | 2, 0, ["a", o1, "b", o2]]]]);
   t.deepEqual(set("a", o1, 0, noCall, 0, a), [1 << 0, 0, ["a", o1]]);
+  t.deepEqual(set("a", o1, 0, rehash2, 0, [1 << 0, 0, ["b", o2]]),
+    [0, 1, [[1 | 2, 0, ["a", o1, "b", o2]]]]);
 });
 
 test("set deep same bits", t => {
