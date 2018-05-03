@@ -31,7 +31,7 @@ type HashNode<K, V> = [
    * and values on odd, after that we have the nodes listed in the nodemap
    * bitmap.
    */
-  Array<any>,
+  Array<K | V | Node<K, V>>,
 ];
 
 export type Node<K, V> =
@@ -157,10 +157,10 @@ export function set<K, V>(key: K, value: V, hash: number, hashFn: HashFn<K>, shi
   if((nodemap & bit) !== 0) {
     // Exists in subnode
     const nodeIdx = array.length - 1 - index(nodemap, bit);
-    const subNode = array[nodeIdx];
+    const subNode = ((array[nodeIdx]: any): Node<K, V>);
     const newNode = shift + LEVEL < 32
-      ? set(key, value, hash, hashFn, shift + LEVEL, subNode)
-      : arrayNodeSet(key, value, subNode);
+      ? set(key, value, hash, hashFn, shift + LEVEL, (subNode: any))
+      : arrayNodeSet(key, value, (subNode: any));
 
     return newNode !== subNode
       ? [
@@ -222,10 +222,10 @@ export function del<K, V>(key: K, hash: number, shift: number, node: RootNode<K,
 
   if((nodemap & bit) !== 0) {
     const nodeIdx = array.length - 1 - index(nodemap, bit);
-    const subNode = array[nodeIdx];
+    const subNode = ((array[nodeIdx]: any): Node<K, V>);
     const newNode = shift + LEVEL < 32
-      ? del(key, hash, shift + LEVEL, subNode)
-      : arrayNodeDel(key, subNode);
+      ? del(key, hash, shift + LEVEL, (subNode: any))
+      : arrayNodeDel(key, (subNode: any));
 
     if(newNode !== subNode) {
       if(newNode !== 0 &&
@@ -279,19 +279,20 @@ export function get<K, V>(key: K, hash: number, node: RootNode<K, V>): ?V {
     const keyIdx                    = 2 * index(datamap, bit);
     const nodeIdx                   = array.length - 1 - index(nodemap, bit);
 
-    if((datamap & bit) !== 0 && (array[keyIdx]: K) === key) {
-      return (array[keyIdx + 1]: V);
+    if((datamap & bit) !== 0 && ((array[keyIdx]: any): K) === key) {
+      return ((array[keyIdx + 1]: any): V);
     }
 
     if((nodemap & bit) === 0) {
       break;
     }
 
-    node   = (array[nodeIdx]: HashNode<K, V>);
     shift += LEVEL;
 
     if(shift >= 32) {
-      return arrayNodeGet(key, ((node: any): ArrayNode<K, V>));
+      return arrayNodeGet(key, ((array[nodeIdx]: any): ArrayNode<K, V>));
     }
+
+    node = ((array[nodeIdx]: any): HashNode<K, V>);
   }
 }
