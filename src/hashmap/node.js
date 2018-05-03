@@ -80,12 +80,6 @@ const index = (bitmap: Bitmap, bit: number): number =>
   popcnt(bitmap & (bit - 1));
 
 /**
- * Number of entries and nodes in the given node.
- */
-const nodeArity = (datamap: Bitmap, nodemap: Bitmap): number =>
-  popcnt(datamap) + popcnt(nodemap);
-
-/**
  * The empty node.
  */
 export const EMPTY: EmptyNode = 0;
