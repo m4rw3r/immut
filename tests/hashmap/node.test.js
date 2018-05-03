@@ -119,12 +119,61 @@ test("delete empty", t => {
 });
 
 test("delete", t => {
-  t.is(del("a", 0, 0, [1 << 0, 0, ["a", "b"]]), 0);
+  t.is(del("a", 0, 0, [1 << 0, 0, ["a", "b"]]), EMPTY);
   t.deepEqual(del("a", 0, 0, [1 << 0 | 1 << 1, 0, ["a", "b", "c", "d"]]), [1 << 1, 0, ["c", "d"]]);
+  t.deepEqual(del("a", 0, 0, [7, 0, ["a", "b", "c", "d", "e", "f"]]), [6, 0, ["c", "d", "e", "f"]]);
+  t.deepEqual(del("c", 1, 0, [7, 0, ["a", "b", "c", "d", "e", "f"]]), [5, 0, ["a", "b", "e", "f"]]);
+  t.deepEqual(del("e", 2, 0, [7, 0, ["a", "b", "c", "d", "e", "f"]]), [3, 0, ["a", "b", "c", "d"]]);
+  // Wrong hash:
+  t.deepEqual(del("e", 1, 0, [7, 0, ["a", "b", "c", "d", "e", "f"]]), [7, 0, ["a", "b", "c", "d", "e", "f"]]);
 });
 
 test("delete missing", t => {
-  t.deepEqual(del("a", 1, 0, [1 << 0, 0, ["a", "b"]]), [1 << 0, 0, ["a", "b"]]);
+  const a = [1 << 0, 0, ["a", "b"]];
+  t.deepEqual(del("a", 1, 0, a), [1 << 0, 0, ["a", "b"]]);
+  t.is(del("a", 1, 0, a), a);
+  t.deepEqual(del("b", 1, 0, a), [1 << 0, 0, ["a", "b"]]);
+  t.is(del("b", 1, 0, a), a);
+  t.deepEqual(del("b", 0, 0, a), [1 << 0, 0, ["a", "b"]]);
+  t.is(del("b", 0, 0, a), a);
+});
+
+test("delete nested", t => {
+  t.deepEqual(del("a", 0, 0, [0, 1, [[3, 0, ["a", { name: "a" }, "b", { name: "b" }]]]]), [1, 0, ["b", { name: "b" }]]);
+  t.deepEqual(del("b", 32, 0, [0, 1, [[3, 0, ["a", { name: "a" }, "b", { name: "b" }]]]]), [1, 0, ["a", { name: "a" }]]);
+  t.deepEqual(del("a", 0, 0, [1, 2, ["a", { name: "a" }, [3, 0, ["b", { name: "b" }, "c", { name: "c" }]]]]), [0, 2, [[3, 0, ["b", { name: "b" }, "c", { name: "c" }]]]]);
+  const a = [1, 2, ["a", { name: "a" }, [3, 0, ["b", { name: "b" }, "c", { name: "c" }]]]];
+
+  global.debug = true;
+  t.deepEqual(del("d", 1, 0, a), [1, 2, ["a", { name: "a" }, [3, 0, ["b", { name: "b" }, "c", { name: "c" }]]]]);
+  global.debug = false;
+  t.is(del("d", 1, 0, a), a);
+  t.deepEqual(del("d", 5, 0, a), [1, 2, ["a", { name: "a" }, [3, 0, ["b", { name: "b" }, "c", { name: "c" }]]]]);
+  t.is(del("d", 5, 0, a), a);
+});
+
+test("delete collision", t => {
+  const o1 = { name: "o1" };
+  const o2 = { name: "o2" };
+  const o3 = { name: "o3" };
+
+  t.deepEqual(del("a", 0, 0, [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [["a", o1, "b", o2]]]]]]]]]]]]]]]), [1, 0, ["b", o2]]);
+  t.deepEqual(del("a", 0, 0, [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [["a", o1, "b", o2, "c", o3]]]]]]]]]]]]]]]), [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [["b", o2, "c", o3]]]]]]]]]]]]]]]);
+
+  t.deepEqual(del("a", 0, 0, [4, 1, ["c", o3, [0, 1, [[0, 1, [
+    [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [["a", o1, "b", o2]]]]]]]]]]]]]]]), [5, 0, ["b", o2, "c", o3]]);
+  t.deepEqual(del("a", 0, 0, [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [[0, 1, [[0, 1, [
+    [4, 1, ["c", o3, ["a", o1, "b", o2]]]]]]]]]]]]]]]), [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [[0, 1, [[0, 1, [
+    [5, 0, ["b", o2, "c", o3]]]]]]]]]]]]]]);
 });
 
 test("get nested", t => {
