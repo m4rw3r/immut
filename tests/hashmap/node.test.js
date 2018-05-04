@@ -4,6 +4,7 @@ import { EMPTY,
          LEVEL,
          get,
          set,
+         has,
          del }   from "../../src/hashmap/node";
 
 const noCall = () => { throw new Error("Should not be called"); };
@@ -174,6 +175,10 @@ test("delete collision", t => {
     [4, 1, ["c", o3, ["a", o1, "b", o2]]]]]]]]]]]]]]]), [0, 1, [[0, 1, [[0, 1, [
     [0, 1, [[0, 1, [[0, 1, [
     [5, 0, ["b", o2, "c", o3]]]]]]]]]]]]]]);
+  t.deepEqual(del("b", 0, 0,[0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [[0, 1, [[0, 1, [
+    [5, 0, ["b", o2, "c", o3]]]]]]]]]]]]]]), [1, 0, ["c", o3]]);
+  t.deepEqual(del("c", 0, 0,[1, 0, ["c", o3]]), EMPTY);
 });
 
 test("get nested", t => {
@@ -202,4 +207,24 @@ test("get collision", t => {
     [0, 1, [["a", o1, "b", o2]]]]]]]]]]]]]]];
   t.is(get("a", 0, a), o1);
   t.is(get("b", 0, a), o2);
+});
+
+test("has", t => {
+  t.is(has("a", 0, EMPTY), false);
+  t.is(has("b", 0, EMPTY), false);
+  t.is(has("a", 1, EMPTY), false);
+  t.is(has("a", 0, [1, 0, ["b", "c"]]), false);
+
+  t.is(has("a", 32, [0, 1 | 2, [[1 << 1, 0, ["b", "c"]], [1 << 1, 0, ["a", "d"]]]]), true);
+  t.is(has("b", 33, [0, 1 | 2, [[1 << 1, 0, ["b", "c"]], [1 << 1, 0, ["a", "d"]]]]), true);
+  t.is(has("c", 33, [0, 1 | 2, [[1 << 1, 0, ["b", "c"]], [1 << 1, 0, ["a", "d"]]]]), false);
+  t.is(has("d", 33, [0, 1 | 2, [[1 << 1, 0, ["b", "c"]], [1 << 1, 0, ["a", "d"]]]]), false);
+
+  const a  = [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [[0, 1, [[0, 1, [
+    [0, 1, [["a", "c", "b", "d"]]]]]]]]]]]]]]];
+  t.is(has("a", 0, a), true);
+  t.is(has("b", 0, a), true);
+  t.is(has("c", 0, a), false);
+  t.is(has("d", 0, a), false);
 });

@@ -13,7 +13,8 @@ import { arrayInsert,
  */
 export type ArrayNode<K, V> =
     [K, V]
-  | [K, V, K, V];
+  | [K, V, K, V]
+  | [K, V, K, V, K, V];
 
 /**
  * O(1). Helper function to cast an array of key-value pairs into an
