@@ -4,6 +4,7 @@ import type { HashFn }    from "../hash";
 import type { ArrayNode } from "./arraynode";
 
 import { get as arrayNodeGet,
+         has as arrayNodeHas,
          set as arrayNodeSet,
          del as arrayNodeDel } from "./arraynode";
 
@@ -84,6 +85,9 @@ const index = (bitmap: Bitmap, bit: number): number =>
  */
 export const EMPTY: EmptyNode = 0;
 
+/**
+ * Merges two key-value pairs into a single node.
+ */
 function mergeEntries<K, V>(shift: number, k1: K, h1: number, v1: V, k2: K, h2: number, v2: V): Node<K, V> {
   if(shift >= 32) {
     // Preserve insertion order
@@ -104,6 +108,11 @@ function mergeEntries<K, V>(shift: number, k1: K, h1: number, v1: V, k2: K, h2: 
        [mergeEntries(shift + LEVEL, k1, h1, v1, k2, h2, v2)]];
 }
 
+// TODO: More doc
+/**
+ *
+ * Worst case: O(N), if all key-hashes have collided.
+ */
 export function set<K, V>(key: K, value: V, hash: number, hashFn: HashFn<K>, shift: number, node: RootNode<K, V>): RootNode<K, V> {
   const bit = bitpos(hash, shift);
 
@@ -172,6 +181,11 @@ export function set<K, V>(key: K, value: V, hash: number, hashFn: HashFn<K>, shi
   ];
 }
 
+// TODO: More doc
+/**
+ *
+ * Worst case: O(N), if all key-hashes have collided.
+ */
 export function del<K, V>(key: K, hash: number, shift: number, node: RootNode<K, V>): RootNode<K, V> {
   if( ! node) {
     return node;
@@ -266,6 +280,44 @@ export function del<K, V>(key: K, hash: number, shift: number, node: RootNode<K,
   return node;
 }
 
+/**
+ * O(log_32(N)). Returns true if the given key exists in the node or any of
+ * its subnodes.
+ *
+ * Worst case: O(N), if all key-hashes have collided.
+ */
+export function has<K, V>(key: K, hash: number, node: RootNode<K, V>): boolean {
+  for(let shift = 0; node;) {
+    const [datamap, nodemap, array] = node;
+    const bit                       = bitpos(hash, shift);
+    const keyIdx                    = 2 * index(datamap, bit);
+    const nodeIdx                   = array.length - 1 - index(nodemap, bit);
+
+    if((datamap & bit) !== 0 && ((array[keyIdx]: any): K) === key) {
+      return true;
+    }
+
+    if((nodemap & bit) === 0) {
+      break;
+    }
+
+    shift += LEVEL;
+
+    if(shift >= 32) {
+      return arrayNodeHas(key, ((array[nodeIdx]: any): ArrayNode<K, V>));
+    }
+
+    node = ((array[nodeIdx]: any): HashNode<K, V>);
+  }
+
+  return false;
+}
+
+/**
+ * O(log_32(N)). Attempts to fetch the value belonging to the given key.
+ *
+ * Worst case: O(N), if all key-hashes have collided.
+ */
 export function get<K, V>(key: K, hash: number, node: RootNode<K, V>): ?V {
   for(let shift = 0; node;) {
     const [datamap, nodemap, array] = node;

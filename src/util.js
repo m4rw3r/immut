@@ -1,5 +1,8 @@
 /* @flow */
 
+/**
+ * Copies the given array and inserts `key`, `val` at the given position `idx`.
+ */
 export function arrayInsert<T>(src: Array<T>, idx: number, key: T, val: T): Array<T> {
   const arr = new Array(src.length + 2);
 
@@ -7,8 +10,8 @@ export function arrayInsert<T>(src: Array<T>, idx: number, key: T, val: T): Arra
     arr[i] = src[i];
   }
 
-  arr[idx] = (key: any);
-  arr[idx + 1] = (val: any);
+  arr[idx]     = key;
+  arr[idx + 1] = val;
 
   for(let i = idx, j = idx + 2, l = src.length - idx; i < l; i++, j++) {
     arr[j] = src[i];
@@ -17,6 +20,9 @@ export function arrayInsert<T>(src: Array<T>, idx: number, key: T, val: T): Arra
   return arr;
 }
 
+/**
+ * Copies the given array and replaces the elemnt at index `idx` with `elem`.
+ */
 export function arrayReplace<T>(src: Array<T>, idx: number, elem: T): Array<T> {
   const arr = new Array(src.length);
 
@@ -29,6 +35,9 @@ export function arrayReplace<T>(src: Array<T>, idx: number, elem: T): Array<T> {
   return arr;
 }
 
+/**
+ * Copies the given array and removes two elements starting at `idx`.
+ */
 export function arrayRemovePair<T>(src: Array<T>, idx: number): Array<T> {
   const arr = new Array(src.length - 2);
 
