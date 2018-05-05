@@ -4,6 +4,8 @@ import gzip     from "rollup-plugin-gzip";
 import uglify   from "rollup-plugin-uglify";
 import replace  from "rollup-plugin-replace";
 
+const production = process.env.NODE_ENV === "production";
+
 export default {
   input:  "src/index.js",
   output: [
@@ -43,10 +45,12 @@ export default {
       jsnext:      true,
       modulesOnly: true,
     }),
-  ].concat(process.env.NODE_ENV === "production" ? [
+  // We only perform the replace in pure production
+  ].concat(production ? [
     replace({
       "process.env.NODE_ENV": JSON.stringify("production"),
     }),
+  ] : []).concat([
     uglify({
       compress: {
         booleans:      true,
@@ -77,15 +81,15 @@ export default {
         unused:        true,
         warnings:      true,
       },
-      mangle:   {
+      mangle: production ? {
         toplevel:   true,
         reserved:   [],
         properties: {
           regex: /^_/
         },
-      },
+      } : false,
       output: {
-        beautify: false
+        beautify: !production
       }
     }),
     gzip({
@@ -93,5 +97,5 @@ export default {
         level: 9
       }
     })
-  ] : []),
+  ]),
 };
