@@ -85,6 +85,47 @@ const index = (bitmap: Bitmap, bit: number): number =>
  */
 export const EMPTY: EmptyNode = 0;
 
+function replaceWithNode<K, V>(src: Array<any>, idx: number, node: Node<K, V>): Array<any> {
+  // Replace with node always adds the node last so the following statement is always true:
+  // TODO: Assert
+  // idx <= src.length - 2
+  const arr = new Array(src.length - 1);
+
+  for(let i = 0; i < idx; i++) {
+    arr[i] = src[i];
+  }
+
+  for(let i = idx, l = src.length - 2; i < l; i++) {
+    arr[i] = src[i + 2];
+  }
+
+  arr[src.length - 2] = node;
+
+  return arr;
+}
+function copyToInline<K, V>(src: Array<any>, newIdx: number, nodeIdx: number, entry: [K, V]): Array<any> {
+  // TODO: Assert
+  // newIdx <= nodeIdx
+  const arr = new Array(src.length + 1);
+
+  for(let i = 0; i < newIdx; i++) {
+    arr[i] = src[i];
+  }
+
+  arr[newIdx]     = entry[0];
+  arr[newIdx + 1] = entry[1]
+
+  for(let i = newIdx; i < nodeIdx; i++) {
+    arr[i + 2] = src[i];
+  }
+
+  for(let i = nodeIdx + 1; i < src.length; i++) {
+    arr[i + 2] = src[i];
+  }
+
+  return arr;
+}
+
 /**
  * Merges two key-value pairs into a single node.
  */
@@ -94,8 +135,8 @@ function mergeEntries<K, V>(shift: number, k1: K, h1: number, v1: V, k2: K, h2: 
     return [k2, v2, k1, v1];
   }
 
-  const masked1 = (h1 >>> shift) & MASK;
-  const masked2 = (h2 >>> shift) & MASK;
+  const masked1 = ((h1 >>> shift) & MASK) | 0;
+  const masked2 = ((h2 >>> shift) & MASK) | 0;
 
   return masked1 !== masked2
     ? [(1 << masked1) | (1 << masked2),
@@ -129,6 +170,7 @@ export function set<K, V>(key: K, value: V, hash: number, hashFn: HashFn<K>, shi
   const idx = index(datamap, bit);
 
   if((datamap & bit) !== 0) {
+    // DEOPT: Wrong map
     const k = ((array[2 * idx]: any): K);
     const v = ((array[2 * idx + 1]: any): V);
 
@@ -148,12 +190,13 @@ export function set<K, V>(key: K, value: V, hash: number, hashFn: HashFn<K>, shi
       datamap ^ bit,
       nodemap | bit,
       // TODO: Replace with specialized
-      arrayRemoveAndAdd(array, 2 * idx, 2, array.length - 2, [
+      replaceWithNode(array, 2 * idx, mergeEntries(shift + LEVEL, key, hash, value, k, hashFn(k), v))
+      /*arrayRemoveAndAdd(array, 2 * idx, 2, array.length - 2, [
         mergeEntries(
           shift + LEVEL,
           key, hash, value,
           k, hashFn(k), v)
-      ])
+      ])*/
     ];
   }
 
@@ -260,12 +303,17 @@ export function del<K, V>(key: K, hash: number, shift: number, node: RootNode<K,
           datamap | bit,
           nodemap ^ bit,
           // TODO: Replace with specialized
-          arrayRemoveAndAdd(array, nodeIdx, 1, 2 * idx,
+          copyToInline(array, 2 * idx, nodeIdx, newNode.length === 3
+              // HashNode<K, V>, with a single key-value
+              ? ((newNode: any)[2]: [K, V])
+              // ArrayNode<K, V>, with a single key-value
+              : ((newNode: any): [K, V])),
+            /*arrayRemoveAndAdd(array, nodeIdx, 1, 2 * idx,
             newNode.length === 3
               // HashNode<K, V>, with a single key-value
               ? ((newNode: any)[2]: Array<K | V>)
               // ArrayNode<K, V>, with a single key-value
-              : ((newNode: any): Array<K | V>)),
+              : ((newNode: any): Array<K | V>)),*/
         ];
       }
 

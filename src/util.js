@@ -13,8 +13,8 @@ export function arrayInsert<T>(src: Array<T>, idx: number, key: T, val: T): Arra
   arr[idx]     = key;
   arr[idx + 1] = val;
 
-  for(let i = idx, j = idx + 2, l = src.length - idx; i < l; i++, j++) {
-    arr[j] = src[i];
+  for(let i = idx; i < src.length; i++) {
+    arr[i + 2] = src[i];
   }
 
   return arr;
@@ -24,11 +24,14 @@ export function arrayInsert<T>(src: Array<T>, idx: number, key: T, val: T): Arra
  * Copies the given array and replaces the elemnt at index `idx` with `elem`.
  */
 export function arrayReplace<T>(src: Array<T>, idx: number, elem: T): Array<T> {
-  const arr = new Array(src.length);
+  /*const arr = new Array(src.length);
 
   for(let i = 0; i < src.length; i++) {
     arr[i] = src[i];
-  }
+  }*/
+
+  // Slice is pretty fast to copy an array in Node 10.0.0
+  const arr = src.slice();
 
   arr[idx] = elem;
 
@@ -41,12 +44,13 @@ export function arrayReplace<T>(src: Array<T>, idx: number, elem: T): Array<T> {
 export function arrayRemovePair<T>(src: Array<T>, idx: number): Array<T> {
   const arr = new Array(src.length - 2);
 
+  // Splice is slow
   for(let i = 0; i < idx; i++) {
     arr[i] = src[i];
   }
 
-  for(let i = idx, j = idx + 2; j < src.length; i++, j++) {
-    arr[i] = src[j];
+  for(let i = idx; i < src.length - 2; i++) {
+    arr[i] = src[i + 2];
   }
 
   return arr;
@@ -54,6 +58,7 @@ export function arrayRemovePair<T>(src: Array<T>, idx: number): Array<T> {
 
 // TODO: Check if we can replace arrayRemovePair with this, and arrayInsertPair, maybe all
 export function arrayRemoveAndAdd<T>(array: Array<T>, start: number, num: number, insert: number, items: Array<T>): Array<T> {
+  // DEOPT: Wrong map (array)
   const len  = array.length;
   const ilen = items.length;
   const arr  = new Array(len - num + ilen);
@@ -76,6 +81,7 @@ export function arrayRemoveAndAdd<T>(array: Array<T>, start: number, num: number
       break;
     }
 
+    // DEOPT: Not a small-integer
     arr[i++] = array[j++];
   }
 

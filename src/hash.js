@@ -28,6 +28,7 @@ export function genericHash(key: any): number {
     /*
      * See: http://stackoverflow.com/a/12996028/3000308
      */
+    // DEOPT: overflow
     key = ((key >>> 16) ^ key) * 0x45d9f3b;
     key = ((key >>> 16) ^ key) * 0x45d9f3b;
 
