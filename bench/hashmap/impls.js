@@ -43,6 +43,14 @@ const immutableMap = {
   set:       basicSet,
 };
 
+const immutableMapTransient = {
+  name:      "immutable.Map (Transient)",
+  immutable: true,
+  create:    () => ImmutableMap().asMutable(),
+  get:       basicGet,
+  set:       basicSet,
+};
+
 const hamtMap = {
   name:      "hamt.Map",
   immutable: true,
@@ -91,6 +99,7 @@ module.exports = [
   immutHashMap,
   //immutHashMapHamtHash,
   immutableMap,
+  //immutableMapTransient,
   //hamtMap,
   hamtMapImmutHash,
   //nativeMap,
